@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль | Учет Оборудования{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title mb-0">Профиль пользователя</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-user-circle fa-7x text-muted"></i>
+                        </div>
+                        {% if user.is_senior %}
+                            <span class="badge bg-success px-3 py-2 mb-3">Старший группы</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="row mb-3">
+                                <label class="col-sm-3 col-form-label">Имя пользователя:</label>
+                                <div class="col-sm-9">
+                                    <input type="text" class="form-control" value="{{ user.username }}" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <label for="id_first_name" class="col-sm-3 col-form-label">Имя:</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="first_name" id="id_first_name" 
+                                           class="form-control" value="{{ user.first_name }}">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <label for="id_last_name" class="col-sm-3 col-form-label">Фамилия:</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="last_name" id="id_last_name" 
+                                           class="form-control" value="{{ user.last_name }}">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <label for="id_email" class="col-sm-3 col-form-label">Email:</label>
+                                <div class="col-sm-9">
+                                    <input type="email" name="email" id="id_email" 
+                                           class="form-control" value="{{ user.email }}">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <label class="col-sm-3 col-form-label">Последний вход:</label>
+                                <div class="col-sm-9">
+                                    <input type="text" class="form-control" 
+                                           value="{{ user.last_login|date:'d.m.Y H:i' }}" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Сохранить изменения
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <h5>Сменить пароль</h5>
+                        <form method="post" action="{% url 'change_password' %}">
+                            {% csrf_token %}
+                            
+                            <div class="mb-3">
+                                <label for="id_old_password" class="form-label">Текущий пароль:</label>
+                                <input type="password" name="old_password" id="id_old_password" class="form-control" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_new_password1" class="form-label">Новый пароль:</label>
+                                <input type="password" name="new_password1" id="id_new_password1" class="form-control" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_new_password2" class="form-label">Подтверждение нового пароля:</label>
+                                <input type="password" name="new_password2" id="id_new_password2" class="form-control" required>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="fas fa-key"></i> Сменить пароль
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

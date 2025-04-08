@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Создание командировки{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        min-height: 38px;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+        padding: 2px 8px;
+        margin-top: 5px;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: white;
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Создание новой командировки</h5>
+                </div>
+                <div class="card-body">
+                    <form id="createTripForm" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Название командировки</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <div class="invalid-feedback">
+                                Пожалуйста, укажите название командировки
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="city" class="form-label">Город</label>
+                            <input type="text" class="form-control" id="city" name="city" required>
+                            <div class="invalid-feedback">
+                                Пожалуйста, укажите город командировки
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="organizations" class="form-label">Организации</label>
+                            <div id="organizationsContainer">
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control organization-input" name="organizations[]" placeholder="Название организации" required>
+                                    <button type="button" class="btn btn-outline-danger remove-org" style="display: none;">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addOrganization">
+                                <i class="fas fa-plus"></i> Добавить организацию
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="members" class="form-label">Участники</label>
+                            <select class="form-select" id="members" name="members" multiple>
+                                {% for user in available_users %}
+                                    {% if user.id != request.user.id %}
+                                        <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Выберите участников командировки. Вы будете добавлены как старший группы.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'trip_list' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i> Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Создать командировку
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Select2 for member selection
+        $('#members').select2({
+            placeholder: 'Выберите участников...',
+            allowClear: true,
+            language: {
+                noResults: function() {
+                    return "Нет доступных пользователей";
+                }
+            }
+        });
+        
+        // Add organization button
+        document.getElementById('addOrganization').addEventListener('click', function() {
+            const container = document.getElementById('organizationsContainer');
+            const newOrg = document.createElement('div');
+            newOrg.className = 'input-group mb-2';
+            newOrg.innerHTML = `
+                <input type="text" class="form-control organization-input" name="organizations[]" placeholder="Название организации" required>
+                <button type="button" class="btn btn-outline-danger remove-org">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            container.appendChild(newOrg);
+            
+            // Show remove buttons if there's more than one organization
+            if (container.children.length > 1) {
+                document.querySelectorAll('.remove-org').forEach(btn => {
+                    btn.style.display = 'block';
+                });
+            }
+        });
+        
+        // Remove organization button
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-org')) {
+                const container = document.getElementById('organizationsContainer');
+                const orgToRemove = e.target.closest('.input-group');
+                container.removeChild(orgToRemove);
+                
+                // Hide remove buttons if there's only one organization left
+                if (container.children.length === 1) {
+                    document.querySelector('.remove-org').style.display = 'none';
+                }
+            }
+        });
+        
+        // Form submission
+        document.getElementById('createTripForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!this.checkValidity()) {
+                e.stopPropagation();
+                this.classList.add('was-validated');
+                return;
+            }
+            
+            // Collect form data
+            const formData = {
+                name: document.getElementById('name').value,
+                city: document.getElementById('city').value,
+                organizations: Array.from(document.querySelectorAll('.organization-input')).map(input => input.value),
+                members: $('#members').val()
+            };
+            
+            try {
+                const response = await fetch('/api/trips/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    window.location.href = `/trips/${data.id}/`;
+                } else {
+                    const errorData = await response.json();
+                    alert('Ошибка при создании командировки: ' + JSON.stringify(errorData));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Произошла ошибка при создании командировки');
+            }
+        });
+    });
+</script>
+{% endblock %} 

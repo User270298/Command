@@ -1,0 +1,465 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавление записи | Учет Оборудования{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">Добавление записи об оборудовании</h3>
+                {% if selected_organization %}
+                    <a href="{% url 'organization_detail' selected_organization.id %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i> Назад к организации
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="post" id="equipment-form">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="id_organization" class="form-label">Организация</label>
+                                <select class="form-select" id="id_organization" name="organization" required {% if selected_organization %}disabled{% endif %}>
+                                    <option value="" {% if not selected_organization %}selected{% endif %}>Выберите организацию</option>
+                                    {% for org in active_organizations %}
+                                        <option value="{{ org.id }}" {% if selected_organization.id == org.id %}selected{% endif %}>
+                                            {{ org.name }}{% if org.trip.city %} ({{ org.trip.city }}){% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if selected_organization %}
+                                    <input type="hidden" name="organization" value="{{ selected_organization.id }}">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="equipment-fields">
+                        <fieldset class="mb-4 p-3 border rounded" id="equipment-1">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">Прибор #1</h5>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="name_1" class="form-label">Наименование</label>
+                                    <input type="text" class="form-control" id="name_1" name="name_1" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="device_type_1" class="form-label">Тип прибора</label>
+                                    <input type="text" class="form-control" id="device_type_1" name="device_type_1" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="measurement_type_1" class="form-label">Тип измерения</label>
+                                    <select class="form-select" id="measurement_type_1" name="measurement_type_1" required>
+                                        <option value="" selected>Выберите тип измерения</option>
+                                        {% for type in measurement_types %}
+                                            <option value="{{ type.id }}">{{ type.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="serial_number_1" class="form-label">Номер прибора</label>
+                                    <input type="text" class="form-control" id="serial_number_1" name="serial_number_1">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="quantity_1" class="form-label">Количество</label>
+                                    <input type="number" class="form-control" id="quantity_1" name="quantity_1" value="1" min="1" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="tech_name_1" class="form-label">Наименование техники</label>
+                                    <input type="text" class="form-control" id="tech_name_1" name="tech_name_1" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="notes_1" class="form-label">Примечание <small class="text-muted">(необязательно)</small></label>
+                                    <input type="text" class="form-control" id="notes_1" name="notes_1">
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mb-4">
+                        <button type="button" class="btn btn-outline-primary" id="add-equipment-field">
+                            <i class="fas fa-plus me-2"></i> Добавить еще один прибор
+                        </button>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        {% if selected_organization %}
+                            <a href="{% url 'organization_detail' selected_organization.id %}" class="btn btn-outline-secondary me-md-2">Отмена</a>
+                        {% else %}
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-md-2">Отмена</a>
+                        {% endif %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i> Сохранить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Используем IIFE для изоляции переменных и предотвращения повторного выполнения
+    (function() {
+        // Флаг для предотвращения повторной инициализации
+        if (window.equipmentFormInitialized) return;
+        window.equipmentFormInitialized = true;
+        
+        // Handle serial number input for all equipment fields
+        function setupSerialNumberHandler(fieldset) {
+            const serialNumberInput = fieldset.querySelector('input[id^="serial_number_"]');
+            const quantityInput = fieldset.querySelector('input[id^="quantity_"]');
+            
+            if (serialNumberInput && quantityInput) {
+                // Set initial state
+                if (serialNumberInput.value.trim() !== '') {
+                    quantityInput.value = 1;
+                    quantityInput.disabled = true;
+                } else {
+                    quantityInput.disabled = false;
+                }
+                
+                // Remove any existing event listeners
+                const newSerialNumberInput = serialNumberInput.cloneNode(true);
+                serialNumberInput.parentNode.replaceChild(newSerialNumberInput, serialNumberInput);
+                
+                // Add new event listener
+                newSerialNumberInput.addEventListener('input', function() {
+                    if (this.value.trim() !== '') {
+                        quantityInput.value = 1;
+                        quantityInput.disabled = true;
+                    } else {
+                        quantityInput.disabled = false;
+                    }
+                });
+            }
+        }
+
+        // Setup handlers for initial fieldset
+        const initialFieldset = document.querySelector('#equipment-fields fieldset');
+        if (initialFieldset) {
+            setupSerialNumberHandler(initialFieldset);
+        }
+
+        // Add equipment field button handler
+        const addButton = document.getElementById('add-equipment-field');
+        let equipmentCount = 1;
+        let isAddingField = false;
+
+        // Удаляем все существующие обработчики перед добавлением нового
+        const newAddButton = addButton.cloneNode(true);
+        addButton.parentNode.replaceChild(newAddButton, addButton);
+        
+        newAddButton.addEventListener('click', function() {
+            if (isAddingField) return;
+            isAddingField = true;
+            
+            try {
+                equipmentCount++;
+                const newFieldset = document.createElement('fieldset');
+                newFieldset.className = 'mb-4 p-3 border rounded';
+                newFieldset.id = `equipment-${equipmentCount}`;
+                
+                // Add header with equipment number and remove button
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'd-flex justify-content-between align-items-center mb-3';
+                
+                const titleH5 = document.createElement('h5');
+                titleH5.className = 'mb-0';
+                titleH5.textContent = `Прибор #${equipmentCount}`;
+                
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn btn-sm btn-danger remove-equipment';
+                removeButton.innerHTML = '<i class="fas fa-trash"></i> Удалить';
+                removeButton.onclick = function() {
+                    newFieldset.remove();
+                };
+                
+                headerDiv.appendChild(titleH5);
+                headerDiv.appendChild(removeButton);
+                newFieldset.appendChild(headerDiv);
+
+                // Create form fields
+                const fields = [
+                { label: 'Тип измерения', id: 'measurement_type', type: 'select', required: true, options: Array.from(document.querySelector('#measurement_type_1').options) },
+                    { label: 'Наименование', id: 'name', type: 'text', required: true },
+                    { label: 'Тип прибора', id: 'device_type', type: 'text', required: true },
+                    { label: 'Номер прибора', id: 'serial_number', type: 'text', required: false },
+                    { label: 'Количество', id: 'quantity', type: 'number', required: true, value: '1', min: '1' },
+                    { label: 'Наименование техники', id: 'tech_name', type: 'text', required: true },
+                    { label: 'Примечание (необязательно)', id: 'notes', type: 'text', required: false }
+                ];
+
+                // Create rows for the fields
+                for (let i = 0; i < fields.length; i += 2) {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'row';
+                    
+                    // First field in the row
+                    const col1Div = document.createElement('div');
+                    col1Div.className = 'col-md-6 mb-3';
+                    
+                    const label1 = document.createElement('label');
+                    label1.className = 'form-label';
+                    label1.htmlFor = `${fields[i].id}_${equipmentCount}`;
+                    label1.textContent = fields[i].label;
+                    
+                    let input1;
+                    if (fields[i].type === 'select') {
+                        input1 = document.createElement('select');
+                        input1.className = 'form-select';
+                        // Clone options from the original select
+                        fields[i].options.forEach(option => {
+                            const newOption = option.cloneNode(true);
+                            input1.appendChild(newOption);
+                        });
+                    } else {
+                        input1 = document.createElement('input');
+                        input1.type = fields[i].type;
+                        input1.className = 'form-control';
+                        if (fields[i].value) input1.value = fields[i].value;
+                        if (fields[i].min) input1.min = fields[i].min;
+                    }
+                    
+                    input1.id = `${fields[i].id}_${equipmentCount}`;
+                    input1.name = `${fields[i].id}_${equipmentCount}`;
+                    if (fields[i].required) input1.required = true;
+                    
+                    col1Div.appendChild(label1);
+                    col1Div.appendChild(input1);
+                    rowDiv.appendChild(col1Div);
+                    
+                    // Second field in the row (if exists)
+                    if (i + 1 < fields.length) {
+                        const col2Div = document.createElement('div');
+                        col2Div.className = 'col-md-6 mb-3';
+                        
+                        const label2 = document.createElement('label');
+                        label2.className = 'form-label';
+                        label2.htmlFor = `${fields[i+1].id}_${equipmentCount}`;
+                        label2.textContent = fields[i+1].label;
+                        
+                        let input2;
+                        if (fields[i+1].type === 'select') {
+                            input2 = document.createElement('select');
+                            input2.className = 'form-select';
+                            // Clone options from the original select
+                            fields[i+1].options.forEach(option => {
+                                const newOption = option.cloneNode(true);
+                                input2.appendChild(newOption);
+                            });
+                        } else {
+                            input2 = document.createElement('input');
+                            input2.type = fields[i+1].type;
+                            input2.className = 'form-control';
+                            if (fields[i+1].value) input2.value = fields[i+1].value;
+                            if (fields[i+1].min) input2.min = fields[i+1].min;
+                        }
+                        
+                        input2.id = `${fields[i+1].id}_${equipmentCount}`;
+                        input2.name = `${fields[i+1].id}_${equipmentCount}`;
+                        if (fields[i+1].required) input2.required = true;
+                        
+                        col2Div.appendChild(label2);
+                        col2Div.appendChild(input2);
+                        rowDiv.appendChild(col2Div);
+                    }
+                    
+                    newFieldset.appendChild(rowDiv);
+                }
+                
+                // Setup serial number handler for the new fieldset
+                setupSerialNumberHandler(newFieldset);
+                
+                // Append the new fieldset to the container
+                document.getElementById('equipment-fields').appendChild(newFieldset);
+            } finally {
+                setTimeout(() => {
+                    isAddingField = false;
+                }, 300);
+            }
+        });
+
+        // Form submission
+        const form = document.getElementById('equipment-form');
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(form);
+            const fieldsets = document.querySelectorAll('#equipment-fields fieldset');
+            
+            // Create equipment records array
+            const equipmentRecords = [];
+            let hasErrors = false;
+            
+            // Validate organization first
+            const organization = formData.get('organization');
+            
+            if (!organization) {
+                showError('Пожалуйста, выберите организацию');
+                return;
+            }
+            
+            fieldsets.forEach(function(fieldset) {
+                const id = fieldset.id.split('-')[1];
+                const name = formData.get(`name_${id}`);
+                const deviceType = formData.get(`device_type_${id}`);
+                const measurementType = formData.get(`measurement_type_${id}`);
+                const serialNumber = formData.get(`serial_number_${id}`);
+                const quantity = formData.get(`quantity_${id}`);
+                const techName = formData.get(`tech_name_${id}`);
+                const notes = formData.get(`notes_${id}`);
+                
+                // Skip empty fieldsets
+                if (!name && !deviceType && !techName) {
+                    return;
+                }
+                
+                // If serial number is provided, set quantity to 1
+                if (serialNumber && serialNumber.trim() !== '') {
+                    formData.set(`quantity_${id}`, '1');
+                }
+                
+                // Validate required fields
+                if (!name || !deviceType || !measurementType || !techName) {
+                    hasErrors = true;
+                    let missingFields = [];
+                    if (!name) missingFields.push('Наименование');
+                    if (!deviceType) missingFields.push('Тип прибора');
+                    if (!measurementType) missingFields.push('Тип измерения');
+                    if (!techName) missingFields.push('Наименование техники');
+                    
+                    showError(`Пожалуйста, заполните следующие поля для прибора #${id}: ${missingFields.join(', ')}`);
+                    return;
+                }
+                
+                // Validate quantity only if serial number is not provided
+                if (!serialNumber || serialNumber.trim() === '') {
+                    if (!quantity || parseInt(quantity) <= 0) {
+                        hasErrors = true;
+                        showError(`Количество должно быть больше 0 для прибора #${id}`);
+                        return;
+                    }
+                }
+                
+                equipmentRecords.push({
+                    organization: organization,
+                    measurement_type: measurementType,
+                    name: name,
+                    device_type: deviceType,
+                    serial_number: serialNumber || null,
+                    quantity: serialNumber && serialNumber.trim() !== '' ? 1 : parseInt(quantity),
+                    tech_name: techName,
+                    notes: notes ? notes.trim() : null
+                });
+            });
+            
+            if (hasErrors) {
+                return;
+            }
+            
+            if (equipmentRecords.length === 0) {
+                showError('Пожалуйста, добавьте хотя бы один прибор');
+                return;
+            }
+            
+            // Show loading state
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
+            
+            try {
+                // Send each record to the API one by one instead of all at once
+                const errors = [];
+                
+                for (const record of equipmentRecords) {
+                    const response = await fetch('/api/equipment/equipment-records/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify(record)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        // Extract the actual error message from nested structure
+                        const errorMessage = errorData.detail || 
+                            (errorData[0] && errorData[0].detail) || 
+                            JSON.stringify(errorData);
+                        errors.push(errorMessage);
+                    }
+                }
+                
+                if (errors.length > 0) {
+                    throw new Error(errors.join('\n'));
+                }
+                
+                // Show success message and redirect
+                showSuccess('Оборудование успешно сохранено');
+                setTimeout(() => {
+                    window.location.href = `/organizations/${organization}/`;
+                }, 1500);
+                
+            } catch (error) {
+                showError(`Ошибка при сохранении: ${error.message}`);
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            }
+        });
+        
+        // Helper function to show error messages
+        function showError(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            form.insertBefore(alertDiv, form.firstChild);
+        }
+        
+        // Helper function to show success messages
+        function showSuccess(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            form.insertBefore(alertDiv, form.firstChild);
+        }
+        
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    })();
+</script>
+{% endblock %}
+{% endblock %} 

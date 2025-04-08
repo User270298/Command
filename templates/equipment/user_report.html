@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Отчеты по сотрудникам | Учет Оборудования{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Отчеты по сотрудникам</h2>
+    {% if organization %}
+        <a href="{% url 'organization_detail' organization.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Назад к организации
+        </a>
+    {% endif %}
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    {% if organization %}
+                        Отчеты для организации: {{ organization.name }}{% if organization.trip.city %} ({{ organization.trip.city }}){% endif %}
+                    {% else %}
+                        Выберите организацию и сотрудника
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'generate_user_report' %}">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_organization" class="form-label">Организация</label>
+                            <select class="form-select" id="id_organization" name="organization_id" required {% if organization %}disabled{% endif %}>
+                                <option value="" {% if not organization %}selected{% endif %}>Выберите организацию</option>
+                                {% for org in organizations %}
+                                    <option value="{{ org.id }}" {% if organization.id == org.id %}selected{% endif %}>
+                                        {{ org.name }}{% if org.trip.city %} ({{ org.trip.city }}){% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if organization %}
+                                <input type="hidden" name="organization_id" value="{{ organization.id }}">
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_user" class="form-label">Сотрудник</label>
+                            <select class="form-select" id="id_user" name="user_id" required>
+                                <option value="" selected>Выберите сотрудника</option>
+                                {% if organization %}
+                                    {% for member in organization.trip.members.all %}
+                                        <option value="{{ member.id }}">
+                                            {{ member.get_full_name|default:member.username }}
+                                            {% if member.id == organization.trip.senior.id %}
+                                                (Старший)
+                                            {% endif %}
+                                        </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-file-pdf me-2"></i> Сформировать PDF отчет
+                        </button>
+                    </div>
+                </form>
+                
+                {% if organization %}
+                    <hr>
+                    
+                    <div class="table-responsive mt-4">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Сотрудник</th>
+                                    <th>Количество записей</th>
+                                    <th>Типы измерений</th>
+                                    <th class="text-center">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in organization.trip.members.all %}
+                                    <tr>
+                                        <td>
+                                            {{ member.get_full_name|default:member.username }}
+                                            {% if member.id == organization.trip.senior.id %}
+                                                <span class="badge bg-warning text-dark">Старший</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {{ member.equipment_records.filter(organization=organization).count }}
+                                        </td>
+                                        <td>
+                                            {% with member_types=member.equipment_records.filter(organization=organization).values_list('measurement_type__name', flat=True).distinct %}
+                                                {% if member_types %}
+                                                    {% for type_name in member_types %}
+                                                        <span class="badge bg-info me-1">{{ type_name }}</span>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">Нет записей</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if member.equipment_records.filter(organization=organization).exists %}
+                                                <form method="post" action="{% url 'generate_user_report' %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="organization_id" value="{{ organization.id }}">
+                                                    <input type="hidden" name="user_id" value="{{ member.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-file-pdf"></i> PDF
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-primary" disabled>
+                                                    <i class="fas fa-file-pdf"></i> PDF
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                        <a href="{% url 'organization_report' %}?organization={{ organization.id }}" class="btn btn-success">
+                            <i class="fas fa-file-pdf me-2"></i> Сформировать общий отчет
+                        </a>
+                        
+                        {% if user.id == organization.trip.senior.id and not organization.is_closed %}
+                            <form method="post" action="{% url 'export_excel' %}" class="d-inline ms-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="organization_id" value="{{ organization.id }}">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-file-excel me-2"></i> Экспорт в Excel и закрытие
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // If not pre-selected, update members dropdown when organization changes
+        const organizationSelect = document.getElementById('id_organization');
+        const userSelect = document.getElementById('id_user');
+        
+        {% if not organization %}
+            organizationSelect.addEventListener('change', function() {
+                const organizationId = this.value;
+                
+                if (organizationId) {
+                    // Clear current options
+                    userSelect.innerHTML = '<option value="" selected>Выберите сотрудника</option>';
+                    
+                    // Fetch members of the selected organization
+                    fetch(`/api/trips/organizations/${organizationId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Get trip members
+                            fetch(`/api/trips/trips/${data.trip}/`)
+                                .then(response => response.json())
+                                .then(tripData => {
+                                    // Add members to dropdown
+                                    tripData.members.forEach(member => {
+                                        const option = document.createElement('option');
+                                        option.value = member.id;
+                                        option.textContent = member.first_name && member.last_name 
+                                            ? `${member.first_name} ${member.last_name}` 
+                                            : member.username;
+                                        
+                                        if (member.id === tripData.senior.id) {
+                                            option.textContent += ' (Старший)';
+                                        }
+                                        
+                                        userSelect.appendChild(option);
+                                    });
+                                });
+                        });
+                }
+            });
+        {% endif %}
+    });
+</script>
+{% endblock %}
+{% endblock %} 

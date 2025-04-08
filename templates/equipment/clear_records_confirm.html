@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Очистка записей | Учет Оборудования{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h3 class="card-title mb-0">Подтверждение очистки записей</h3>
+            </div>
+            <div class="card-body">
+                <p class="lead">Вы уверены, что хотите удалить все записи об оборудовании для организации "{{ organization.name }}"?</p>
+                <p class="text-danger">Это действие нельзя отменить!</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'organization_detail' organization.id %}" class="btn btn-outline-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-2"></i> Удалить все записи
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

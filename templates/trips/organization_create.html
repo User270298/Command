@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавление организации | Учет Оборудования{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h3 class="card-title mb-0">Добавление организации</h3>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Название организации</label>
+                        <input type="text" class="form-control" id="id_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_trip" class="form-label">Командировка</label>
+                        <select class="form-select" id="id_trip" name="trip" required {% if selected_trip %}disabled{% endif %}>
+                            <option value="" {% if not selected_trip %}selected{% endif %}>Выберите командировку</option>
+                            {% for trip in trips %}
+                                <option value="{{ trip.id }}" {% if selected_trip.id == trip.id %}selected{% endif %}>
+                                    {{ trip.name }}{% if trip.city %} ({{ trip.city }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if selected_trip %}
+                            <input type="hidden" name="trip" value="{{ selected_trip.id }}">
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        {% if selected_trip %}
+                            <a href="{% url 'trip_detail' selected_trip.id %}" class="btn btn-outline-secondary me-md-2">Отмена</a>
+                        {% else %}
+                            <a href="{% url 'trip_list' %}" class="btn btn-outline-secondary me-md-2">Отмена</a>
+                        {% endif %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus-circle me-2"></i> Добавить организацию
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

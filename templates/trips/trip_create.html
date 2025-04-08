@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}Создание командировки | Командировочные{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        min-height: 38px;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+        padding: 2px 8px;
+        margin-top: 5px;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: white;
+        margin-right: 5px;
+    }
+    .organization-item {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 15px;
+        margin-bottom: 10px;
+        background-color: #f8f9fa;
+    }
+    .organization-item .remove-org {
+        color: #dc3545;
+        cursor: pointer;
+    }
+    .organization-item .remove-org:hover {
+        color: #bd2130;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Создание новой командировки</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Название командировки</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <div class="invalid-feedback">
+                                Пожалуйста, укажите название командировки
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="city" class="form-label">Город</label>
+                            <input type="text" class="form-control" id="city" name="city" required>
+                            <div class="invalid-feedback">
+                                Пожалуйста, укажите город
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Организации</label>
+                            <div id="organizations-container">
+                                <div class="organization-item">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">Организация #1</h6>
+                                        <span class="remove-org" data-org-id="1"><i class="fas fa-times-circle"></i></span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="org-name-1" class="form-label">Название организации</label>
+                                        <input type="text" class="form-control" id="org-name-1" name="org_names[]" required>
+                                        <div class="invalid-feedback">
+                                            Пожалуйста, укажите название организации
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-organization">
+                                <i class="fas fa-plus me-1"></i> Добавить организацию
+                            </button>
+                            <div class="form-text">
+                                Вы можете добавить от 1 до 20 организаций для командировки.
+                            </div>
+                        </div>
+                        
+                        {% if available_users.exists %}
+                            <div class="mb-3">
+                                <label for="members" class="form-label">Участники</label>
+                                <select class="form-select" id="members" name="members" multiple>
+                                    {% for user in available_users %}
+                                        {% if user.id != request.user.id %}
+                                            <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Выберите участников командировки. Максимум 3 участника (не считая вас как старшего). 
+                                    Отображаются только пользователи, не участвующие в других активных командировках.
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="mb-3">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i> В данный момент нет доступных пользователей для командировки. 
+                                    Все пользователи уже участвуют в активных командировках.
+                                </div>
+                                <input type="hidden" name="members" value="">
+                            </div>
+                        {% endif %}
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> Вы будете добавлены как старший группы. 
+                            В командировке может быть максимум 4 человека (включая старшего).
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'trip_list' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i> Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Создать командировку
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Select2 for member selection
+        const membersSelect = document.getElementById('members');
+        if (membersSelect) {
+            $('#members').select2({
+                placeholder: 'Выберите участников...',
+                allowClear: true,
+                maximumSelectionLength: 3,
+                language: {
+                    maximumSelected: function (e) {
+                        return 'Вы можете выбрать максимум 3 участников';
+                    }
+                }
+            });
+        }
+        
+        // Organization management
+        let orgCounter = 1;
+        const maxOrgs = 20;
+        const container = document.getElementById('organizations-container');
+        const addButton = document.getElementById('add-organization');
+        
+        // Add organization
+        addButton.addEventListener('click', function() {
+            if (orgCounter >= maxOrgs) {
+                alert('Максимальное количество организаций: ' + maxOrgs);
+                return;
+            }
+            
+            orgCounter++;
+            const orgItem = document.createElement('div');
+            orgItem.className = 'organization-item';
+            orgItem.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Организация #${orgCounter}</h6>
+                    <span class="remove-org" data-org-id="${orgCounter}"><i class="fas fa-times-circle"></i></span>
+                </div>
+                <div class="mb-2">
+                    <label for="org-name-${orgCounter}" class="form-label">Название организации</label>
+                    <input type="text" class="form-control" id="org-name-${orgCounter}" name="org_names[]" required>
+                    <div class="invalid-feedback">
+                        Пожалуйста, укажите название организации
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(orgItem);
+            
+            // Add event listener to the new remove button
+            const removeBtn = orgItem.querySelector('.remove-org');
+            removeBtn.addEventListener('click', function() {
+                orgItem.remove();
+            });
+        });
+        
+        // Add event listener to the initial remove button
+        const initialRemoveBtn = document.querySelector('.remove-org');
+        if (initialRemoveBtn) {
+            initialRemoveBtn.addEventListener('click', function() {
+                const orgItem = this.closest('.organization-item');
+                if (document.querySelectorAll('.organization-item').length > 1) {
+                    orgItem.remove();
+                } else {
+                    alert('Должна быть хотя бы одна организация');
+                }
+            });
+        }
+        
+        // Form validation
+        const form = document.querySelector('.needs-validation');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                // Check if number of selected members exceeds the limit
+                const membersSelect = document.getElementById('members');
+                if (membersSelect) {
+                    const selectedMembers = $('#members').select2('data').length;
+                    if (selectedMembers > 3) {
+                        event.preventDefault();
+                        alert('Вы можете выбрать максимум 3 участников (не считая себя)');
+                    }
+                }
+                
+                // Check if at least one organization is provided
+                const orgInputs = document.querySelectorAll('input[name="org_names[]"]');
+                let hasValidOrg = false;
+                orgInputs.forEach(input => {
+                    if (input.value.trim() !== '') {
+                        hasValidOrg = true;
+                    }
+                });
+                
+                if (!hasValidOrg) {
+                    event.preventDefault();
+                    alert('Пожалуйста, укажите хотя бы одну организацию');
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        }
+    });
+</script>
+{% endblock %} 
