@@ -5,12 +5,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-your-secret-key-here'
+SECRET_KEY = 'Parkwood2702'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['metrotrip.ru']
 
 # Application definition
 INSTALLED_APPS = [
@@ -56,8 +56,12 @@ WSGI_APPLICATION = 'command_project.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'ovsyan93_command',
+        'USER': 'ovsyan93',
+        'PASSWORD': 'Parkwood2702',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
@@ -85,6 +89,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
+STATIC_ROOT = '/home/o/ovsyan_93/metrotrip.ru/public_html/static'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 # Default primary key field type

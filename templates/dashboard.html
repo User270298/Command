@@ -4,25 +4,25 @@
 
 {% block content %}
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card bg-light border-0">
-            <div class="card-body py-4">
-                <div class="d-flex align-items-center">
-                    <div>
-                        <h1 class="mb-1">Здравствуйте, {{ user.first_name|default:user.username }}!</h1>
+            <div class="card-body py-3 py-md-4">
+                <div class="d-flex flex-column flex-md-row align-items-center">
+                    <div class="text-center text-md-start mb-3 mb-md-0">
+                        <h1 class="h4 mb-1">Здравствуйте, {{ user.first_name|default:user.username }}!</h1>
                         <p class="text-muted mb-0">Сегодня {% now "d.m.Y" %}</p>
                     </div>
                     {% if active_trip %}
-                        <a href="{% url 'trip_detail' active_trip.id %}" class="btn btn-primary ms-auto">
+                        <a href="{% url 'trip_detail' active_trip.id %}" class="btn btn-primary ms-md-auto">
                             <i class="fas fa-briefcase me-2"></i> Текущая командировка
                         </a>
                     {% else %}
                         {% if user.is_senior %}
-                            <a href="{% url 'trip_create' %}" class="btn btn-success ms-auto">
+                            <a href="{% url 'trip_create' %}" class="btn btn-success ms-md-auto">
                                 <i class="fas fa-plus me-2"></i> Создать командировку
                             </a>
                         {% else %}
-                            <span class="ms-auto badge bg-secondary py-2 px-3">Нет активных командировок</span>
+                            <span class="ms-md-auto badge bg-secondary py-2 px-3">Нет активных командировок</span>
                         {% endif %}
                     {% endif %}
                 </div>
@@ -31,16 +31,16 @@
     </div>
 </div>
 
-<div class="row g-4">
+<div class="row g-3 g-md-4">
     {% if active_trip %}
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
             <div class="card h-100">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Активная командировка</h5>
                     <span class="badge bg-light text-dark">{{ active_trip.start_date|date:"d.m.Y" }}</span>
                 </div>
                 <div class="card-body">
-                    <h4 class="mb-3">{{ active_trip.name }}</h4>
+                    <h4 class="h5 mb-3">{{ active_trip.name }}</h4>
                     {% if active_trip.city %}
                     <p><i class="fas fa-map-marker-alt me-2"></i> {{ active_trip.city }}</p>
                     {% endif %}
@@ -69,7 +69,7 @@
             </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
             <div class="card h-100">
                 <div class="card-header bg-success text-white">
                     <h5 class="card-title mb-0">Организации</h5>
@@ -113,58 +113,58 @@
             </div>
         </div>
     {% else %}
-        <div class="col-md-4">
-            <div class="card dashboard-card text-center py-4">
+        <div class="col-12 col-md-4">
+            <div class="card dashboard-card text-center py-3 py-md-4">
                 <div class="card-body">
-                    <i class="fas fa-briefcase dashboard-icon"></i>
-                    <h5 class="card-title">Командировки</h5>
-                    <p class="card-text">Просмотр и управление командировками</p>
-                    <a href="{% url 'trip_list' %}" class="btn btn-primary">Перейти</a>
+                    <i class="fas fa-briefcase dashboard-icon mb-3"></i>
+                    <h5 class="card-title h6">Командировки</h5>
+                    <p class="card-text small">Просмотр и управление командировками</p>
+                    <a href="{% url 'trip_list' %}" class="btn btn-primary btn-sm">Перейти</a>
                 </div>
             </div>
         </div>
         
         {% if user.is_senior %}
-            <div class="col-md-4">
-                <div class="card dashboard-card text-center py-4">
+            <div class="col-12 col-md-4">
+                <div class="card dashboard-card text-center py-3 py-md-4">
                     <div class="card-body">
-                        <i class="fas fa-users dashboard-icon"></i>
-                        <h5 class="card-title">Управление группой</h5>
-                        <p class="card-text">Создание командировок и назначение членов группы</p>
-                        <a href="{% url 'trip_create' %}" class="btn btn-success">Создать командировку</a>
+                        <i class="fas fa-users dashboard-icon mb-3"></i>
+                        <h5 class="card-title h6">Управление группой</h5>
+                        <p class="card-text small">Создание командировок и назначение членов группы</p>
+                        <a href="{% url 'trip_create' %}" class="btn btn-success btn-sm">Создать командировку</a>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="card dashboard-card text-center py-4">
+            <div class="col-12 col-md-4">
+                <div class="card dashboard-card text-center py-3 py-md-4">
                     <div class="card-body">
-                        <i class="fas fa-ruler dashboard-icon"></i>
-                        <h5 class="card-title">Типы измерений</h5>
-                        <p class="card-text">Управление типами измерений для оборудования</p>
-                        <a href="{% url 'measurement_type_list' %}" class="btn btn-primary">Перейти</a>
+                        <i class="fas fa-ruler dashboard-icon mb-3"></i>
+                        <h5 class="card-title h6">Типы измерений</h5>
+                        <p class="card-text small">Управление типами измерений для оборудования</p>
+                        <a href="{% url 'measurement_type_list' %}" class="btn btn-primary btn-sm">Перейти</a>
                     </div>
                 </div>
             </div>
         {% else %}
-            <div class="col-md-4">
-                <div class="card dashboard-card text-center py-4">
+            <div class="col-12 col-md-4">
+                <div class="card dashboard-card text-center py-3 py-md-4">
                     <div class="card-body">
-                        <i class="fas fa-history dashboard-icon"></i>
-                        <h5 class="card-title">История записей</h5>
-                        <p class="card-text">Просмотр истории ваших записей об оборудовании</p>
-                        <a href="{% url 'equipment_record_list' %}" class="btn btn-primary">Перейти</a>
+                        <i class="fas fa-history dashboard-icon mb-3"></i>
+                        <h5 class="card-title h6">История записей</h5>
+                        <p class="card-text small">Просмотр истории ваших записей об оборудовании</p>
+                        <a href="{% url 'my_records' %}" class="btn btn-primary btn-sm">Перейти</a>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="card dashboard-card text-center py-4">
+            <div class="col-12 col-md-4">
+                <div class="card dashboard-card text-center py-3 py-md-4">
                     <div class="card-body">
-                        <i class="fas fa-user-edit dashboard-icon"></i>
-                        <h5 class="card-title">Профиль</h5>
-                        <p class="card-text">Управление личными данными и настройками</p>
-                        <a href="{% url 'profile' %}" class="btn btn-primary">Перейти</a>
+                        <i class="fas fa-user-edit dashboard-icon mb-3"></i>
+                        <h5 class="card-title h6">Профиль</h5>
+                        <p class="card-text small">Управление личными данными и настройками</p>
+                        <a href="{% url 'profile' %}" class="btn btn-primary btn-sm">Перейти</a>
                     </div>
                 </div>
             </div>

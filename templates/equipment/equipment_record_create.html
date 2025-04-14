@@ -40,7 +40,7 @@
                     <div id="equipment-fields">
                         <fieldset class="mb-4 p-3 border rounded" id="equipment-1">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">Прибор #1</h5>
+                                <h5 class="mb-0">Прибор</h5>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -177,7 +177,7 @@
                 
                 const titleH5 = document.createElement('h5');
                 titleH5.className = 'mb-0';
-                titleH5.textContent = `Прибор #${equipmentCount}`;
+                titleH5.textContent = `Прибор`;
                 
                 const removeButton = document.createElement('button');
                 removeButton.type = 'button';
@@ -193,7 +193,7 @@
 
                 // Create form fields
                 const fields = [
-                { label: 'Тип измерения', id: 'measurement_type', type: 'select', required: true, options: Array.from(document.querySelector('#measurement_type_1').options) },
+                    { label: 'Тип измерения', id: 'measurement_type', type: 'select', required: true, options: Array.from(document.querySelector('#measurement_type_1').options) },
                     { label: 'Наименование', id: 'name', type: 'text', required: true },
                     { label: 'Тип прибора', id: 'device_type', type: 'text', required: true },
                     { label: 'Номер прибора', id: 'serial_number', type: 'text', required: false },

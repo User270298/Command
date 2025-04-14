@@ -22,7 +22,7 @@ from django.views.generic import RedirectView
 
 # Импортируем разделенные URL-маршруты
 from equipment.urls import api_urlpatterns as equipment_api_urls, urlpatterns as equipment_urls
-from trips.urls import api_urlpatterns as trips_api_urls, urlpatterns as trips_urls
+from trips.urls import api_urlpatterns as trips_api_urls, urlpatterns as trips_urls, organization_urlpatterns
 from users.urls import api_urlpatterns as users_api_urls, urlpatterns as users_urls
 
 urlpatterns = [
@@ -37,6 +37,7 @@ urlpatterns = [
     path('users/', include(users_urls)),
     path('trips/', include(trips_urls)),
     path('equipment/', include(equipment_urls)),
+    path('organizations/', include(organization_urlpatterns)),
     path('', RedirectView.as_view(url='users/dashboard/', permanent=False)),
 ]
 
