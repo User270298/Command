@@ -1,12 +1,54 @@
+Options +FollowSymLinks
 RewriteEngine On
 RewriteBase /
+
+# Безопасность
+Options -Indexes
+ServerSignature Off
 
 # Handle static files
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 # Redirect all other requests to Django
-RewriteRule ^(.*)$ /index.py/$1 [L]
+RewriteRule ^(.*)$ /index.py/$1 [L,QSA]
 
 # Set Python handler
-AddHandler fcgid-script .py 
+AddHandler fcgid-script .py
+FcgidInitialEnv PYTHONPATH "/home/ovsyan93/metrotrip.ru/public_html"
+FcgidInitialEnv DJANGO_SETTINGS_MODULE "equipment_tracking.settings"
+FcgidInitialEnv PATH "/usr/local/bin:/usr/bin:/bin"
+FcgidInitialEnv LANG "ru_RU.UTF-8"
+FcgidInitialEnv LC_ALL "ru_RU.UTF-8"
+FcgidInitialEnv PYTHONIOENCODING "utf-8"
+
+# Настройки для обработки Python
+FcgidMaxRequestLen 1073741824
+FcgidMaxProcesses 5
+FcgidIOTimeout 120
+FcgidConnectTimeout 20
+FcgidBusyTimeout 300
+FcgidIdleTimeout 300
+FcgidProcessLifeTime 3600
+FcgidMaxRequestsPerProcess 1000
+FcgidMinProcessesPerClass 0
+FcgidMaxProcessesPerClass 10
+FcgidMaxRequestInMem 65536
+FcgidMaxRequestsPerProcess 1000
+
+# Обработка ошибок
+ErrorDocument 500 "Internal Server Error"
+ErrorDocument 404 "Not Found"
+ErrorDocument 403 "Forbidden"
+
+# Статические файлы
+Alias /static/ /home/ovsyan93/metrotrip.ru/public_html/staticfiles/
+<Directory /home/ovsyan93/metrotrip.ru/public_html/staticfiles>
+    Require all granted
+</Directory>
+
+# Медиа файлы
+Alias /media/ /home/ovsyan93/metrotrip.ru/public_html/media/
+<Directory /home/ovsyan93/metrotrip.ru/public_html/media>
+    Require all granted
+</Directory> 
