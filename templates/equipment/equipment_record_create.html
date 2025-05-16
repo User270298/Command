@@ -44,16 +44,6 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="name_1" class="form-label">Наименование</label>
-                                    <input type="text" class="form-control" id="name_1" name="name_1" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="device_type_1" class="form-label">Тип прибора</label>
-                                    <input type="text" class="form-control" id="device_type_1" name="device_type_1" required>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
                                     <label for="measurement_type_1" class="form-label">Тип измерения</label>
                                     <select class="form-select" id="measurement_type_1" name="measurement_type_1" required>
                                         <option value="" selected>Выберите тип измерения</option>
@@ -61,6 +51,16 @@
                                             <option value="{{ type.id }}">{{ type.name }}</option>
                                         {% endfor %}
                                     </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="name_1" class="form-label">Наименование</label>
+                                    <input type="text" class="form-control" id="name_1" name="name_1" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="device_type_1" class="form-label">Тип прибора</label>
+                                    <input type="text" class="form-control" id="device_type_1" name="device_type_1" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="serial_number_1" class="form-label">Номер прибора</label>
