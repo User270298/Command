@@ -72,6 +72,7 @@
                                     <th>Тип</th>
                                     <th>Номер</th>
                                     <th>Количество</th>
+                                    <th>Статус</th>
                                     {% if is_senior %}
                                     <th>Пользователь</th>
                                     {% endif %}
@@ -89,6 +90,11 @@
                                         <td>{{ record.device_type }}</td>
                                         <td>{{ record.serial_number|default:"-" }}</td>
                                         <td>{{ record.quantity }}</td>
+                                        <td>
+                                            <span class="badge {% if record.status == 'годен' %}bg-success{% else %}bg-danger{% endif %}">
+                                                {{ record.status }}
+                                            </span>
+                                        </td>
                                         {% if is_senior %}
                                         <td>{{ record.user.get_full_name|default:record.user.username }}</td>
                                         {% endif %}

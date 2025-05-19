@@ -8,6 +8,6 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
 
 @admin.register(EquipmentRecord)
 class EquipmentRecordAdmin(admin.ModelAdmin):
-    list_display = ['name', 'device_type', 'measurement_type', 'organization', 'user', 'quantity', 'date_created']
-    list_filter = ['measurement_type', 'date_created', 'organization']
+    list_display = ['name', 'device_type', 'measurement_type', 'organization', 'user', 'quantity', 'status', 'date_created']
+    list_filter = ['measurement_type', 'date_created', 'organization', 'status']
     search_fields = ['name', 'device_type', 'serial_number', 'tech_name']

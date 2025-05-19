@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import HttpResponseForbidden, HttpResponse
+from django.http import HttpResponseForbidden, HttpResponse, JsonResponse
 from django.utils import timezone
 from django.db.models import Count, Q
+from django.urls import reverse
 import csv
 import io
 
@@ -25,64 +26,133 @@ def measurement_type_list_view(request):
 @login_required
 def equipment_record_create_view(request):
     user = request.user
-    organization_id = request.GET.get('organization')
     organization = None
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     
-    if organization_id:
+    def json_response(success, error=None, redirect_url=None, details=None):
+        if is_ajax:
+            response_data = {'success': success}
+            if error:
+                response_data['error'] = error
+            if redirect_url:
+                response_data['redirect_url'] = redirect_url
+            if details:
+                response_data['details'] = details
+            return JsonResponse(response_data)
+        else:
+            if error:
+                messages.error(request, error)
+            elif success:
+                messages.success(request, 'Записи об оборудовании успешно созданы')
+            return redirect(redirect_url or 'equipment_record_create')
+    
+    # Get organization from URL if provided
+    org_id = request.GET.get('organization')
+    if org_id:
         try:
-            organization = Organization.objects.get(id=organization_id)
-            # Check if user is a member of this organization's trip
-            if not (user == organization.trip.senior or user in organization.trip.members.all()):
-                messages.error(request, 'У вас нет доступа к этой организации')
-                return redirect('trip_list')
-            
-            if organization.is_closed:
-                messages.error(request, 'Организация закрыта, невозможно добавить новые записи')
-                return redirect('organization_detail', org_id=organization.id)
+            organization = Organization.objects.get(id=org_id)
         except Organization.DoesNotExist:
-            pass
+            return json_response(False, 'Организация не найдена')
     
     if request.method == 'POST':
-        measurement_type_id = request.POST.get('measurement_type')
-        organization_id = request.POST.get('organization')
-        value = request.POST.get('value')
-        notes = request.POST.get('notes', '')
-        
-        if not all([measurement_type_id, organization_id, value]):
-            messages.error(request, 'Пожалуйста, заполните все обязательные поля')
-            return redirect('equipment_record_create')
-        
         try:
-            measurement_type = MeasurementType.objects.get(id=measurement_type_id)
-            organization = Organization.objects.get(id=organization_id)
+            # Check if this is a duplicate submission
+            if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+                return json_response(False, 'Invalid request type')
+            
+            # Get organization
+            organization_id = request.POST.get('organization')
+            if not organization_id:
+                return json_response(False, 'Пожалуйста, выберите организацию')
+            
+            try:
+                organization = Organization.objects.get(id=organization_id)
+            except Organization.DoesNotExist:
+                return json_response(False, 'Организация не найдена')
             
             # Check if user is a member of this organization's trip
             if not (user == organization.trip.senior or user in organization.trip.members.all()):
-                messages.error(request, 'У вас нет доступа к этой организации')
-                return redirect('trip_list')
+                return json_response(False, 'У вас нет доступа к этой организации')
             
             if organization.is_closed:
-                messages.error(request, 'Организация закрыта, невозможно добавить новые записи')
-                return redirect('organization_detail', org_id=organization.id)
+                return json_response(False, 'Организация закрыта, невозможно добавить новые записи')
             
-            # Create equipment record
-            EquipmentRecord.objects.create(
-                measurement_type=measurement_type,
-                organization=organization,
-                user=user,
-                value=value,
-                notes=notes
-            )
+            # Get number of equipment fields
+            try:
+                num_fields = int(request.POST.get('equipment-fields', 0))
+            except (TypeError, ValueError):
+                return json_response(False, 'Неверное количество полей оборудования')
             
-            messages.success(request, 'Запись об оборудовании успешно создана')
-            return redirect('organization_detail', org_id=organization.id)
+            if num_fields < 1:
+                return json_response(False, 'Не найдены поля оборудования')
             
-        except (MeasurementType.DoesNotExist, Organization.DoesNotExist):
-            messages.error(request, 'Ошибка при создании записи')
-            return redirect('equipment_record_create')
+            created_records = []
+            for i in range(1, num_fields + 1):
+                measurement_type_id = request.POST.get(f'measurement_type_{i}')
+                name = request.POST.get(f'name_{i}')
+                device_type = request.POST.get(f'device_type_{i}')
+                serial_number = request.POST.get(f'serial_number_{i}')
+                quantity = request.POST.get(f'quantity_{i}')
+                tech_name = request.POST.get(f'tech_name_{i}')
+                notes = request.POST.get(f'notes_{i}')
+                
+                if not all([measurement_type_id, name, device_type, quantity, tech_name]):
+                    missing_fields = []
+                    if not measurement_type_id: missing_fields.append('тип измерения')
+                    if not name: missing_fields.append('наименование')
+                    if not device_type: missing_fields.append('тип прибора')
+                    if not quantity: missing_fields.append('количество')
+                    if not tech_name: missing_fields.append('наименование техники')
+                    
+                    error_message = f'Пожалуйста, заполните все обязательные поля для прибора {i}: {", ".join(missing_fields)}'
+                    return json_response(False, error_message)
+                
+                try:
+                    measurement_type = MeasurementType.objects.get(id=measurement_type_id)
+                except MeasurementType.DoesNotExist:
+                    return json_response(False, f'Тип измерения с ID {measurement_type_id} не найден')
+                
+                # Check for duplicate record
+                duplicate = EquipmentRecord.objects.filter(
+                    organization=organization,
+                    measurement_type=measurement_type,
+                    name=name,
+                    device_type=device_type,
+                    serial_number=serial_number,
+                    tech_name=tech_name
+                ).exists()
+                
+                if duplicate:
+                    return json_response(False, f'Запись с такими параметрами уже существует для прибора {i}')
+                
+                try:
+                    # Create equipment record
+                    record = EquipmentRecord.objects.create(
+                        measurement_type=measurement_type,
+                        organization=organization,
+                        user=user,
+                        name=name,
+                        device_type=device_type,
+                        serial_number=serial_number,
+                        quantity=quantity,
+                        tech_name=tech_name,
+                        notes=notes
+                    )
+                    created_records.append(record)
+                except Exception as e:
+                    import traceback
+                    return json_response(False, f'Ошибка при создании записи для прибора {i}: {str(e)}', details=traceback.format_exc())
+            
+            if not created_records:
+                return json_response(False, 'Не удалось создать записи об оборудовании')
+            
+            return json_response(True, redirect_url=reverse('organization_detail', args=[organization.id]))
+            
+        except Exception as e:
+            import traceback
+            return json_response(False, f'Произошла ошибка при сохранении: {str(e)}', details=traceback.format_exc())
     
     # Get active organizations where user is a member
-    # Получение всех поездок, в которых пользователь является участником или старшим
     trips_as_member = BusinessTrip.objects.filter(
         Q(members=user) | Q(senior=user),
         end_date=None  # Активные командировки не имеют даты окончания

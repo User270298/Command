@@ -167,7 +167,7 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
             type_records = records.filter(measurement_type=m_type)
             
             # Create table data
-            data = [['Наименование', 'Тип прибора', 'Номер прибора', 'Количество', 'Техника', 'Примечание']]
+            data = [['Наименование', 'Тип прибора', 'Номер прибора', 'Количество', 'Техника', 'Статус', 'Примечание']]
             
             for record in type_records:
                 data.append([
@@ -176,6 +176,7 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
                     record.serial_number or '',
                     str(record.quantity),
                     record.tech_name,
+                    record.status,
                     record.notes or ''
                 ])
             
@@ -251,7 +252,7 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
                 type_records = user_records.filter(measurement_type=m_type)
                 
                 # Create table data
-                data = [['Наименование', 'Тип прибора', 'Номер прибора', 'Количество', 'Техника', 'Примечание']]
+                data = [['Наименование', 'Тип прибора', 'Номер прибора', 'Количество', 'Техника', 'Статус', 'Примечание']]
                 
                 for record in type_records:
                     data.append([
@@ -260,6 +261,7 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
                         record.serial_number or '',
                         str(record.quantity),
                         record.tech_name,
+                        record.status,
                         record.notes or ''
                     ])
                 
@@ -330,6 +332,7 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
                     'Номер прибора': record.serial_number or '',
                     'Количество': record.quantity,
                     'Техника': record.tech_name,
+                    'Статус': record.status,
                     'Примечание': record.notes or '',
                     'Сотрудник': record.user.get_full_name() or record.user.username
                 })

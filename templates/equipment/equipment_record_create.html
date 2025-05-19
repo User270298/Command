@@ -25,7 +25,7 @@
                                 <select class="form-select" id="id_organization" name="organization" required {% if selected_organization %}disabled{% endif %}>
                                     <option value="" {% if not selected_organization %}selected{% endif %}>Выберите организацию</option>
                                     {% for org in active_organizations %}
-                                        <option value="{{ org.id }}" {% if selected_organization.id == org.id %}selected{% endif %}>
+                                        <option value="{{ org.id }}" {% if selected_organization and selected_organization.id == org.id %}selected{% endif %}>
                                             {{ org.name }}{% if org.trip.city %} ({{ org.trip.city }}){% endif %}
                                         </option>
                                     {% endfor %}
@@ -42,16 +42,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5 class="mb-0">Прибор</h5>
                             </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="name_1" class="form-label">Наименование</label>
-                                    <input type="text" class="form-control" id="name_1" name="name_1" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="device_type_1" class="form-label">Тип прибора</label>
-                                    <input type="text" class="form-control" id="device_type_1" name="device_type_1" required>
-                                </div>
-                            </div>
+                            <input type="hidden" name="equipment-fields" value="1">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="measurement_type_1" class="form-label">Тип измерения</label>
@@ -61,6 +52,16 @@
                                             <option value="{{ type.id }}">{{ type.name }}</option>
                                         {% endfor %}
                                     </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="name_1" class="form-label">Наименование</label>
+                                    <input type="text" class="form-control" id="name_1" name="name_1" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="device_type_1" class="form-label">Тип прибора</label>
+                                    <input type="text" class="form-control" id="device_type_1" name="device_type_1" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="serial_number_1" class="form-label">Номер прибора</label>
@@ -78,7 +79,14 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-12 mb-3">
+                                <div class="col-md-6 mb-3">
+                                    <label for="status_1" class="form-label">Статус</label>
+                                    <select class="form-select" id="status_1" name="status_1" required>
+                                        <option value="годен" selected>Годен</option>
+                                        <option value="брак">Брак</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
                                     <label for="notes_1" class="form-label">Примечание <small class="text-muted">(необязательно)</small></label>
                                     <input type="text" class="form-control" id="notes_1" name="notes_1">
                                 </div>
@@ -107,62 +115,21 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
-    // Используем IIFE для изоляции переменных и предотвращения повторного выполнения
-    (function() {
-        // Флаг для предотвращения повторной инициализации
-        if (window.equipmentFormInitialized) return;
-        window.equipmentFormInitialized = true;
-        
-        // Handle serial number input for all equipment fields
-        function setupSerialNumberHandler(fieldset) {
-            const serialNumberInput = fieldset.querySelector('input[id^="serial_number_"]');
-            const quantityInput = fieldset.querySelector('input[id^="quantity_"]');
-            
-            if (serialNumberInput && quantityInput) {
-                // Set initial state
-                if (serialNumberInput.value.trim() !== '') {
-                    quantityInput.value = 1;
-                    quantityInput.disabled = true;
-                } else {
-                    quantityInput.disabled = false;
-                }
-                
-                // Remove any existing event listeners
-                const newSerialNumberInput = serialNumberInput.cloneNode(true);
-                serialNumberInput.parentNode.replaceChild(newSerialNumberInput, serialNumberInput);
-                
-                // Add new event listener
-                newSerialNumberInput.addEventListener('input', function() {
-                    if (this.value.trim() !== '') {
-                        quantityInput.value = 1;
-                        quantityInput.disabled = true;
-                    } else {
-                        quantityInput.disabled = false;
-                    }
-                });
-            }
-        }
-
-        // Setup handlers for initial fieldset
-        const initialFieldset = document.querySelector('#equipment-fields fieldset');
-        if (initialFieldset) {
-            setupSerialNumberHandler(initialFieldset);
-        }
-
-        // Add equipment field button handler
-        const addButton = document.getElementById('add-equipment-field');
+    document.addEventListener('DOMContentLoaded', function() {
         let equipmentCount = 1;
         let isAddingField = false;
-
-        // Удаляем все существующие обработчики перед добавлением нового
-        const newAddButton = addButton.cloneNode(true);
-        addButton.parentNode.replaceChild(newAddButton, addButton);
         
-        newAddButton.addEventListener('click', function() {
-            if (isAddingField) return;
+        const addButton = document.getElementById('add-equipment-field');
+        
+        addButton.addEventListener('click', function() {
+            if (isAddingField) {
+                console.log('Already adding a field, preventing double addition');
+                return;
+            }
             isAddingField = true;
             
             try {
@@ -177,7 +144,7 @@
                 
                 const titleH5 = document.createElement('h5');
                 titleH5.className = 'mb-0';
-                titleH5.textContent = `Прибор`;
+                titleH5.textContent = `Прибор ${equipmentCount}`;
                 
                 const removeButton = document.createElement('button');
                 removeButton.type = 'button';
@@ -185,6 +152,7 @@
                 removeButton.innerHTML = '<i class="fas fa-trash"></i> Удалить';
                 removeButton.onclick = function() {
                     newFieldset.remove();
+                    equipmentCount--;
                 };
                 
                 headerDiv.appendChild(titleH5);
@@ -193,12 +161,31 @@
 
                 // Create form fields
                 const fields = [
-                    { label: 'Тип измерения', id: 'measurement_type', type: 'select', required: true, options: Array.from(document.querySelector('#measurement_type_1').options) },
+                    { 
+                        label: 'Тип измерения', 
+                        id: 'measurement_type', 
+                        type: 'select', 
+                        required: true,
+                        options: Array.from(document.querySelector('#measurement_type_1').options).map(opt => ({
+                            value: opt.value,
+                            text: opt.text
+                        }))
+                    },
                     { label: 'Наименование', id: 'name', type: 'text', required: true },
                     { label: 'Тип прибора', id: 'device_type', type: 'text', required: true },
                     { label: 'Номер прибора', id: 'serial_number', type: 'text', required: false },
                     { label: 'Количество', id: 'quantity', type: 'number', required: true, value: '1', min: '1' },
                     { label: 'Наименование техники', id: 'tech_name', type: 'text', required: true },
+                    { 
+                        label: 'Статус', 
+                        id: 'status', 
+                        type: 'select', 
+                        required: true, 
+                        options: [
+                            { value: 'годен', text: 'Годен' },
+                            { value: 'брак', text: 'Брак' }
+                        ]
+                    },
                     { label: 'Примечание (необязательно)', id: 'notes', type: 'text', required: false }
                 ];
 
@@ -220,11 +207,14 @@
                     if (fields[i].type === 'select') {
                         input1 = document.createElement('select');
                         input1.className = 'form-select';
-                        // Clone options from the original select
-                        fields[i].options.forEach(option => {
-                            const newOption = option.cloneNode(true);
-                            input1.appendChild(newOption);
-                        });
+                        if (fields[i].options) {
+                            fields[i].options.forEach(opt => {
+                                const option = document.createElement('option');
+                                option.value = opt.value;
+                                option.textContent = opt.text;
+                                input1.appendChild(option);
+                            });
+                        }
                     } else {
                         input1 = document.createElement('input');
                         input1.type = fields[i].type;
@@ -255,11 +245,14 @@
                         if (fields[i+1].type === 'select') {
                             input2 = document.createElement('select');
                             input2.className = 'form-select';
-                            // Clone options from the original select
-                            fields[i+1].options.forEach(option => {
-                                const newOption = option.cloneNode(true);
-                                input2.appendChild(newOption);
-                            });
+                            if (fields[i+1].options) {
+                                fields[i+1].options.forEach(opt => {
+                                    const option = document.createElement('option');
+                                    option.value = opt.value;
+                                    option.textContent = opt.text;
+                                    input2.appendChild(option);
+                                });
+                            }
                         } else {
                             input2 = document.createElement('input');
                             input2.type = fields[i+1].type;
@@ -280,9 +273,6 @@
                     newFieldset.appendChild(rowDiv);
                 }
                 
-                // Setup serial number handler for the new fieldset
-                setupSerialNumberHandler(newFieldset);
-                
                 // Append the new fieldset to the container
                 document.getElementById('equipment-fields').appendChild(newFieldset);
             } finally {
@@ -294,131 +284,88 @@
 
         // Form submission
         const form = document.getElementById('equipment-form');
+        let isSubmitting = false;
+        
         form.addEventListener('submit', async function(event) {
             event.preventDefault();
+            
+            if (isSubmitting) {
+                console.log('Form is already submitting, preventing double submission');
+                return;
+            }
+            isSubmitting = true;
+            
+            // Remove any existing error messages
+            const existingErrors = form.querySelectorAll('.alert-danger');
+            existingErrors.forEach(error => error.remove());
             
             const formData = new FormData(form);
             const fieldsets = document.querySelectorAll('#equipment-fields fieldset');
             
-            // Create equipment records array
-            const equipmentRecords = [];
-            let hasErrors = false;
-            
             // Validate organization first
             const organization = formData.get('organization');
-            
             if (!organization) {
                 showError('Пожалуйста, выберите организацию');
+                isSubmitting = false;
                 return;
             }
             
-            fieldsets.forEach(function(fieldset) {
-                const id = fieldset.id.split('-')[1];
-                const name = formData.get(`name_${id}`);
-                const deviceType = formData.get(`device_type_${id}`);
-                const measurementType = formData.get(`measurement_type_${id}`);
-                const serialNumber = formData.get(`serial_number_${id}`);
-                const quantity = formData.get(`quantity_${id}`);
-                const techName = formData.get(`tech_name_${id}`);
-                const notes = formData.get(`notes_${id}`);
+            // Update equipment-fields value with actual count
+            formData.set('equipment-fields', fieldsets.length.toString());
+            
+            // Validate each equipment fieldset
+            let hasErrors = false;
+            fieldsets.forEach((fieldset, index) => {
+                const measurementType = fieldset.querySelector(`#measurement_type_${index + 1}`).value;
+                const name = fieldset.querySelector(`#name_${index + 1}`).value;
+                const deviceType = fieldset.querySelector(`#device_type_${index + 1}`).value;
+                const quantity = fieldset.querySelector(`#quantity_${index + 1}`).value;
+                const techName = fieldset.querySelector(`#tech_name_${index + 1}`).value;
                 
-                // Skip empty fieldsets
-                if (!name && !deviceType && !techName) {
-                    return;
-                }
-                
-                // If serial number is provided, set quantity to 1
-                if (serialNumber && serialNumber.trim() !== '') {
-                    formData.set(`quantity_${id}`, '1');
-                }
-                
-                // Validate required fields
-                if (!name || !deviceType || !measurementType || !techName) {
+                if (!measurementType || !name || !deviceType || !quantity || !techName) {
+                    showError(`Пожалуйста, заполните все обязательные поля для прибора ${index + 1}`);
                     hasErrors = true;
-                    let missingFields = [];
-                    if (!name) missingFields.push('Наименование');
-                    if (!deviceType) missingFields.push('Тип прибора');
-                    if (!measurementType) missingFields.push('Тип измерения');
-                    if (!techName) missingFields.push('Наименование техники');
-                    
-                    showError(`Пожалуйста, заполните следующие поля для прибора #${id}: ${missingFields.join(', ')}`);
                     return;
                 }
-                
-                // Validate quantity only if serial number is not provided
-                if (!serialNumber || serialNumber.trim() === '') {
-                    if (!quantity || parseInt(quantity) <= 0) {
-                        hasErrors = true;
-                        showError(`Количество должно быть больше 0 для прибора #${id}`);
-                        return;
-                    }
-                }
-                
-                equipmentRecords.push({
-                    organization: organization,
-                    measurement_type: measurementType,
-                    name: name,
-                    device_type: deviceType,
-                    serial_number: serialNumber || null,
-                    quantity: serialNumber && serialNumber.trim() !== '' ? 1 : parseInt(quantity),
-                    tech_name: techName,
-                    notes: notes ? notes.trim() : null
-                });
             });
             
             if (hasErrors) {
+                isSubmitting = false;
                 return;
             }
             
-            if (equipmentRecords.length === 0) {
-                showError('Пожалуйста, добавьте хотя бы один прибор');
-                return;
-            }
-            
-            // Show loading state
+            // Submit the form
             const submitButton = form.querySelector('button[type="submit"]');
             const originalButtonText = submitButton.innerHTML;
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
             
             try {
-                // Send each record to the API one by one instead of all at once
-                const errors = [];
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Сохранение...';
                 
-                for (const record of equipmentRecords) {
-                    const response = await fetch('/api/equipment/equipment-records/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        body: JSON.stringify(record)
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        // Extract the actual error message from nested structure
-                        const errorMessage = errorData.detail || 
-                            (errorData[0] && errorData[0].detail) || 
-                            JSON.stringify(errorData);
-                        errors.push(errorMessage);
-                    }
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    showError(data.error || 'Произошла ошибка при сохранении');
                 }
-                
-                if (errors.length > 0) {
-                    throw new Error(errors.join('\n'));
-                }
-                
-                // Show success message and redirect
-                showSuccess('Оборудование успешно сохранено');
-                setTimeout(() => {
-                    window.location.href = `/organizations/${organization}/`;
-                }, 1500);
-                
             } catch (error) {
-                showError(`Ошибка при сохранении: ${error.message}`);
+                console.error('Error:', error);
+                showError('Произошла ошибка при сохранении. Пожалуйста, попробуйте еще раз.');
+            } finally {
                 submitButton.disabled = false;
                 submitButton.innerHTML = originalButtonText;
+                isSubmitting = false;
             }
         });
         
@@ -432,34 +379,6 @@
             `;
             form.insertBefore(alertDiv, form.firstChild);
         }
-        
-        // Helper function to show success messages
-        function showSuccess(message) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-success alert-dismissible fade show';
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            form.insertBefore(alertDiv, form.firstChild);
-        }
-        
-        // Helper function to get CSRF token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-    })();
+    });
 </script>
-{% endblock %}
 {% endblock %} 
