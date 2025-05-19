@@ -331,7 +331,7 @@ def generate_weekly_report(request, org_id):
         doc.add_heading(measurement_type, level=1)
         for user_name, records in user_data.items():
             doc.add_heading(f'Работник: {user_name}', level=2)
-            table = doc.add_table(rows=1, cols=6)
+            table = doc.add_table(rows=1, cols=7)
             table.style = 'Table Grid'
             header_cells = table.rows[0].cells
             header_cells[0].text = 'Наименование'
@@ -339,7 +339,8 @@ def generate_weekly_report(request, org_id):
             header_cells[2].text = 'Номер'
             header_cells[3].text = 'Количество'
             header_cells[4].text = 'Техника'
-            header_cells[5].text = 'Примечание'
+            header_cells[5].text = 'Статус'
+            header_cells[6].text = 'Примечание'
             
             for record in records:
                 row_cells = table.add_row().cells
@@ -348,7 +349,8 @@ def generate_weekly_report(request, org_id):
                 row_cells[2].text = record.serial_number or ''
                 row_cells[3].text = str(record.quantity)
                 row_cells[4].text = record.tech_name
-                row_cells[5].text = record.notes or ''
+                row_cells[5].text = record.status
+                row_cells[6].text = record.notes or ''
     
     # Save the document
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
@@ -382,7 +384,7 @@ def complete_organization(request, org_id):
         
         for measurement_type, records in measurement_groups.items():
             doc.add_heading(measurement_type, level=1)
-            table = doc.add_table(rows=1, cols=7)
+            table = doc.add_table(rows=1, cols=8)
             table.style = 'Table Grid'
             header_cells = table.rows[0].cells
             header_cells[0].text = '№'
@@ -391,7 +393,8 @@ def complete_organization(request, org_id):
             header_cells[3].text = 'Номер'
             header_cells[4].text = 'Количество'
             header_cells[5].text = 'Техника'
-            header_cells[6].text = 'Примечание'
+            header_cells[6].text = 'Статус'
+            header_cells[7].text = 'Примечание'
             
             for idx, record in enumerate(records, 1):
                 row_cells = table.add_row().cells
@@ -401,7 +404,8 @@ def complete_organization(request, org_id):
                 row_cells[3].text = record.serial_number or ''
                 row_cells[4].text = str(record.quantity)
                 row_cells[5].text = record.tech_name
-                row_cells[6].text = record.notes or ''
+                row_cells[6].text = record.status
+                row_cells[7].text = record.notes or ''
         
         # Save the document
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')

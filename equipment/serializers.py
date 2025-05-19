@@ -14,7 +14,7 @@ class EquipmentRecordSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'organization', 'measurement_type', 
             'name', 'device_type', 'serial_number', 'quantity', 
-            'tech_name', 'notes', 'date_created'
+            'tech_name', 'status', 'notes', 'date_created'
         ]
         read_only_fields = ['id', 'date_created']
         extra_kwargs = {
@@ -84,6 +84,6 @@ class EquipmentRecordDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'organization', 'measurement_type', 
             'name', 'device_type', 'serial_number', 'quantity', 
-            'tech_name', 'notes', 'date_created'
+            'tech_name', 'status', 'notes', 'date_created'
         ]
         read_only_fields = ['id', 'user', 'date_created'] 

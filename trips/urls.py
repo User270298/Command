@@ -33,4 +33,5 @@ urlpatterns = [
     path('<int:trip_id>/', trip_detail_view, name='trip_detail'),
     path('create/', trip_create_view, name='trip_create'),
     path('<int:pk>/close/', close_trip, name='close_trip'),
+    path('organizations/', include(organization_urlpatterns)),
 ] 

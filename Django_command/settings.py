@@ -11,7 +11,7 @@ SECRET_KEY = 'parkwood2702'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'metrotrip.ru', 'www.metrotrip.ru']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'metrotrip.ru', 'www.metrotrip.ru', '5.35.92.247']
 
 # Application definition
 

@@ -1,0 +1,24 @@
+{
+  "name": "Командировка",
+  "short_name": "Командировка",
+  "icons": [
+    {
+      "src": "/static/images/main.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/main.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/main.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#212529",
+  "background_color": "#ffffff",
+  "display": "standalone"
+} 
