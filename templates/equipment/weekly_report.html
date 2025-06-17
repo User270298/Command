@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Недельный отчет{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>Недельный отчет ({{ report.week_start|date:"d.m.Y" }} - {{ report.week_end|date:"d.m.Y" }})</h2>
+        </div>
+    </div>
+
+    <!-- Статистика по пользователям -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Статистика по пользователям</h4>
+                </div>
+                <div class="card-body">
+                    {% for user_name, measurements in user_stats.items %}
+                    <div class="mb-3">
+                        <h5>{{ user_name }}</h5>
+                        <ul class="list-group">
+                            {% for measurement_type, count in measurements.items %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ measurement_type }}
+                                <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика по подразделениям -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Статистика по подразделениям</h4>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for org_name, count in org_stats.items %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ org_name }}
+                            <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

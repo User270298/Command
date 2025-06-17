@@ -8,6 +8,8 @@ from django.utils import timezone
 from django.urls import reverse
 import logging
 from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from .models import BusinessTrip, Organization
 from equipment.models import EquipmentRecord
@@ -307,50 +309,43 @@ def generate_weekly_report(request, org_id):
     if user != organization.trip.senior:
         return HttpResponseForbidden("Только старший группы может выгружать отчеты")
     
-    # Get records from the last 7 days
-    seven_days_ago = timezone.now() - timezone.timedelta(days=7)
+    # Get records from the current week (Monday to Sunday)
+    today = timezone.now().date()
+    monday = today - timezone.timedelta(days=today.weekday())
+    sunday = monday + timezone.timedelta(days=6)
+    
     records = organization.equipment_records.filter(
-        date_created__gte=seven_days_ago
+        date_created__date__gte=monday,
+        date_created__date__lte=sunday
     ).select_related('measurement_type', 'user')
     
-    # Group records by measurement type and user
+    # Group records by user and measurement type
     report_data = {}
     for record in records:
-        if record.measurement_type.name not in report_data:
-            report_data[record.measurement_type.name] = {}
         user_name = record.user.get_full_name() or record.user.username
-        if user_name not in report_data[record.measurement_type.name]:
-            report_data[record.measurement_type.name][user_name] = []
-        report_data[record.measurement_type.name][user_name].append(record)
+        if user_name not in report_data:
+            report_data[user_name] = {}
+        if record.measurement_type.name not in report_data[user_name]:
+            report_data[user_name][record.measurement_type.name] = 0
+        report_data[user_name][record.measurement_type.name] += record.quantity
     
     # Create Word document
     doc = Document()
-    doc.add_heading(f'Отчет по организации {organization.name} за неделю', 0)
     
-    for measurement_type, user_data in report_data.items():
-        doc.add_heading(measurement_type, level=1)
-        for user_name, records in user_data.items():
-            doc.add_heading(f'Работник: {user_name}', level=2)
-            table = doc.add_table(rows=1, cols=7)
-            table.style = 'Table Grid'
-            header_cells = table.rows[0].cells
-            header_cells[0].text = 'Наименование'
-            header_cells[1].text = 'Тип'
-            header_cells[2].text = 'Номер'
-            header_cells[3].text = 'Количество'
-            header_cells[4].text = 'Техника'
-            header_cells[5].text = 'Статус'
-            header_cells[6].text = 'Примечание'
-            
-            for record in records:
-                row_cells = table.add_row().cells
-                row_cells[0].text = record.name
-                row_cells[1].text = record.device_type
-                row_cells[2].text = record.serial_number or ''
-                row_cells[3].text = str(record.quantity)
-                row_cells[4].text = record.tech_name
-                row_cells[5].text = record.status
-                row_cells[6].text = record.notes or ''
+    # Set default font
+    style = doc.styles['Normal']
+    style.font.name = 'Times New Roman'
+    style.font.size = Pt(10)
+    
+    doc.add_heading(f'Отчет по организации {organization.name} за неделю', 0)
+    doc.add_paragraph(f'Период: с {monday.strftime("%d.%m.%Y")} по {sunday.strftime("%d.%m.%Y")}')
+    
+    # Add user statistics
+    for user_name, measurements in report_data.items():
+        doc.add_paragraph(f'Работник (поверитель): {user_name}')
+        for measurement_type, count in measurements.items():
+            doc.add_paragraph(f'{count} СИ {measurement_type}', style='List Bullet')
+        doc.add_paragraph()  # Add empty line between users
     
     # Save the document
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
@@ -368,12 +363,44 @@ def complete_organization(request, org_id):
         return HttpResponseForbidden("Только старший группы может завершать организации")
     
     if request.method == 'POST':
-        # Generate final report
+        # Get all records for this organization
         records = organization.equipment_records.all().select_related('measurement_type', 'user')
         
         # Create Word document
         doc = Document()
-        doc.add_heading(f'Итоговый отчет по организации {organization.name}', 0)
+        
+        # Set default font for entire document
+        style = doc.styles['Normal']
+        style.font.name = 'Times New Roman'
+        style.font.size = Pt(10)
+        
+        # Add title and header
+        title = doc.add_paragraph()
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_run = title.add_run('ЭТАЛОНЫ (СИ), АТТЕСТОВАННЫЕ (ПОВЕРЕННЫЕ) СОГЛАСНО ПЛАНА-ГРАФИКА\nПРЕДСТАВЛЕНИЯ ВОИНСКИМИ ЧАСТЯМИ (ПОДРАЗДЕЛЕНИЯМИ) НА АТТЕСТАЦИЮ\nЭТАЛОНОВ (ПОВЕРКУ СИ) В ПЛАНИРУЕМОМ ГОДУ')
+        title_run.font.name = 'Times New Roman'
+        title_run.font.size = Pt(10)
+        title_run.bold = True
+        
+        # Add table header
+        table = doc.add_table(rows=1, cols=9)
+        table.style = 'Table Grid'
+        
+        # Set table header
+        header_cells = table.rows[0].cells
+        headers = ['№ п/п', 'Наименование', 'Тип', 'Заводской номер', 'Количество', 
+                  'Результат аттестации (поверки)', 'Дата выполнения аттестации (поверки)',
+                  'Тип ВВСТ, в состав которого входит эталон (СИ)',
+                  'Примечание (номер извещения о непригодности к применению (свидетельства об аттестации (о поверке))']
+        
+        for i, header in enumerate(headers):
+            cell = header_cells[i]
+            cell.text = header
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = cell.paragraphs[0].runs[0]
+            run.font.name = 'Times New Roman'
+            run.font.size = Pt(10)
+            run.bold = True
         
         # Group records by measurement type
         measurement_groups = {}
@@ -382,30 +409,41 @@ def complete_organization(request, org_id):
                 measurement_groups[record.measurement_type.name] = []
             measurement_groups[record.measurement_type.name].append(record)
         
+        # Add records
+        row_num = 1
         for measurement_type, records in measurement_groups.items():
-            doc.add_heading(measurement_type, level=1)
-            table = doc.add_table(rows=1, cols=8)
-            table.style = 'Table Grid'
-            header_cells = table.rows[0].cells
-            header_cells[0].text = '№'
-            header_cells[1].text = 'Наименование'
-            header_cells[2].text = 'Тип'
-            header_cells[3].text = 'Номер'
-            header_cells[4].text = 'Количество'
-            header_cells[5].text = 'Техника'
-            header_cells[6].text = 'Статус'
-            header_cells[7].text = 'Примечание'
+            # Add measurement type header
+            row_cells = table.add_row().cells
+            row_cells[0].text = f'Средства измерений {measurement_type}'
+            row_cells[0].merge(row_cells[8])  # Merge all cells in the row
+            cell = row_cells[0]
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = cell.paragraphs[0].runs[0]
+            run.font.name = 'Times New Roman'
+            run.font.size = Pt(10)
+            run.bold = True
             
-            for idx, record in enumerate(records, 1):
+            # Add records for this measurement type
+            for record in records:
                 row_cells = table.add_row().cells
-                row_cells[0].text = str(idx)
+                row_cells[0].text = str(row_num)
                 row_cells[1].text = record.name
                 row_cells[2].text = record.device_type
                 row_cells[3].text = record.serial_number or ''
                 row_cells[4].text = str(record.quantity)
-                row_cells[5].text = record.tech_name
-                row_cells[6].text = record.status
-                row_cells[7].text = record.notes or ''
+                row_cells[5].text = record.status
+                row_cells[6].text = f'С {timezone.now().strftime("%d.%m.%Y")} по {(timezone.now() + timezone.timedelta(days=365)).strftime("%d.%m.%Y")}'
+                row_cells[7].text = record.tech_name
+                row_cells[8].text = record.notes or ''
+                
+                # Center align all cells and set font
+                for cell in row_cells:
+                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in cell.paragraphs[0].runs:
+                        run.font.name = 'Times New Roman'
+                        run.font.size = Pt(10)
+                
+                row_num += 1
         
         # Save the document
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
