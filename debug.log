@@ -14078,3 +14078,15 @@ INFO 2025-06-17 14:22:23,074 autoreload 4392 19392 Watching for file changes wit
 INFO 2025-06-17 14:22:23,074 autoreload 4392 19392 Watching for file changes with StatReloader
 INFO 2025-06-17 14:22:57,224 autoreload 9872 14060 Watching for file changes with StatReloader
 INFO 2025-06-17 14:22:57,224 autoreload 9872 14060 Watching for file changes with StatReloader
+INFO 2025-06-17 14:50:45,250 autoreload 16224 9648 Watching for file changes with StatReloader
+INFO 2025-06-17 14:50:45,250 autoreload 16224 9648 Watching for file changes with StatReloader
+INFO 2025-06-17 14:51:54,732 autoreload 16224 9648 C:\Users\parkw\Desktop\Work\Command\Django_command\Django_command\settings.py changed, reloading.
+INFO 2025-06-17 14:51:54,732 autoreload 16224 9648 C:\Users\parkw\Desktop\Work\Command\Django_command\Django_command\settings.py changed, reloading.
+INFO 2025-06-17 14:51:55,959 autoreload 6372 15816 Watching for file changes with StatReloader
+INFO 2025-06-17 14:51:55,959 autoreload 6372 15816 Watching for file changes with StatReloader
+INFO 2025-06-17 14:52:21,922 autoreload 6372 15816 C:\Users\parkw\Desktop\Work\Command\Django_command\Django_command\settings.py changed, reloading.
+INFO 2025-06-17 14:52:21,922 autoreload 6372 15816 C:\Users\parkw\Desktop\Work\Command\Django_command\Django_command\settings.py changed, reloading.
+INFO 2025-06-17 14:52:25,187 autoreload 6480 4520 Watching for file changes with StatReloader
+INFO 2025-06-17 14:52:25,187 autoreload 6480 4520 Watching for file changes with StatReloader
+INFO 2025-06-17 14:53:03,118 autoreload 9444 8536 Watching for file changes with StatReloader
+INFO 2025-06-17 14:53:03,118 autoreload 9444 8536 Watching for file changes with StatReloader

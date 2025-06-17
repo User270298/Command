@@ -76,6 +76,9 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'parkwood2702'),
         'HOST': os.getenv('POSTGRES_HOST', 'db'),
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'OPTIONS': {
+            'client_encoding': 'UTF8',
+        },
     }
 }
 
