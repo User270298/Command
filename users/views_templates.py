@@ -125,6 +125,37 @@ def dashboard_view(request):
     organizations = []
     if active_trip and hasattr(active_trip, 'organizations'):
         organizations = active_trip.organizations.all()
+
+    # Статистика за неделю для старшего группы
+    senior_week_stats = None
+    if user == getattr(active_trip, 'senior', None) and organizations:
+        from collections import defaultdict
+        from equipment.models import EquipmentRecord
+        from datetime import timedelta
+        now = timezone.now()
+        monday = now - timedelta(days=now.weekday())
+        monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+        sunday = monday + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        senior_week_stats = []
+        for org in organizations:
+            org_stats = {
+                'id': org.id,
+                'name': org.name,
+                'workers': defaultdict(lambda: defaultdict(int)),  # {user: {measurement_type: count}}
+                'details': defaultdict(lambda: defaultdict(list)),  # {user: {measurement_type: [EquipmentRecord, ...]}}
+            }
+            records = EquipmentRecord.objects.filter(
+                organization=org,
+                date_created__gte=monday,
+                date_created__lte=sunday
+            ).select_related('user', 'measurement_type')
+            for rec in records:
+                org_stats['workers'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name] += rec.quantity
+                org_stats['details'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name].append(rec)
+            # Преобразуем defaultdict в dict для шаблона
+            org_stats['workers'] = {k: dict(v) for k, v in org_stats['workers'].items()}
+            org_stats['details'] = {k: dict(v) for k, v in org_stats['details'].items()}
+            senior_week_stats.append(org_stats)
     
     # Get recent equipment records
     recent_records = []
@@ -134,7 +165,8 @@ def dashboard_view(request):
     context = {
         'active_trip': active_trip,
         'organizations': organizations,
-        'recent_records': recent_records
+        'recent_records': recent_records,
+        'senior_week_stats': senior_week_stats,
     }
     
     return render(request, 'dashboard.html', context)

@@ -181,15 +181,15 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
                     record.notes or ''
                 ])
             
-            # Create the table
+            # Create and style the table
             table = Table(data)
-            
-            # Style the table
             table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),  # Times New Roman для всего
+                ('FONTSIZE', (0, 0), (-1, -1), 10),  # Размер 10
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),  # Жирный для заголовка
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
                 ('GRID', (0, 0), (-1, -1), 1, colors.black)
@@ -269,10 +269,12 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
                 # Create and style the table
                 table = Table(data)
                 table.setStyle(TableStyle([
+                    ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),  # Times New Roman для всего
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),  # Размер 10
                     ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),  # Жирный для заголовка
                     ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                     ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
                     ('GRID', (0, 0), (-1, -1), 1, colors.black)

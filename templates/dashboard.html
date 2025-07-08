@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load dict_get %}
 
 {% block title %}Главная | Командировка{% endblock %}
 
@@ -172,41 +174,79 @@
     {% endif %}
 </div>
 
-{% if recent_records %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="card-title mb-0">Последние записи об оборудовании</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Дата</th>
-                                    <th>Организация</th>
-                                    <th>Тип измерения</th>
-                                    <th>Значение</th>
-                                    <th>Заметки</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for record in recent_records %}
-                                    <tr>
-                                        <td>{{ record.date_created|date:"d.m.Y" }}</td>
-                                        <td>{{ record.organization.name }}</td>
-                                        <td>{{ record.measurement_type.name }} ({{ record.measurement_type.unit }})</td>
-                                        <td>{{ record.name }}</td>
-                                        <td>{{ record.notes|truncatechars:50 }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+{% endblock %} 
+
+{# --- Панель для старшего группы: статистика за неделю по командировке --- #}
+{% if user.is_authenticated and active_trip and user.id == active_trip.senior.id and senior_week_stats %}
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Статистика по командировке за неделю</h5>
+            </div>
+            <div class="card-body">
+                {% for org in senior_week_stats %}
+                    <h6 class="mt-3">Организация: {{ org.name }}</h6>
+                    {% if org.workers %}
+                        <ul class="list-group mb-3">
+                            {% for worker, mtypes in org.workers.items %}
+                                <li class="list-group-item">
+                                    <strong>{{ worker }}</strong> —
+                                    {% for mtype, total in mtypes.items %}
+                                        {{ total }} СИ {{ mtype }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                    {% with worker_details=org.details|dict_get:worker %}
+                                        {% if org.details and worker_details %}
+                                            <button class="btn btn-link btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#details_{{ org.id }}_{{ forloop.counter }}" aria-expanded="false" aria-controls="details_{{ org.id }}_{{ forloop.counter }}">
+                                                Подробно
+                                            </button>
+                                            <div class="collapse" id="details_{{ org.id }}_{{ forloop.counter }}">
+                                                <div class="table-responsive mt-2">
+                                                    <table class="table table-sm table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Тип измерения</th>
+                                                                <th>Наименование</th>
+                                                                <th>Тип</th>
+                                                                <th>Серийный номер</th>
+                                                                <th>Количество</th>
+                                                                <th>Статус</th>
+                                                                <th>Дата</th>
+                                                                <th>Время внесения</th>
+                                                                <th>Примечание</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for mtype, records in worker_details.items %}
+                                                                {% for rec in records %}
+                                                                <tr>
+                                                                    <td>{{ rec.measurement_type.name }}</td>
+                                                                    <td>{{ rec.name }}</td>
+                                                                    <td>{{ rec.device_type }}</td>
+                                                                    <td>{{ rec.serial_number|default:'-' }}</td>
+                                                                    <td>{{ rec.quantity }}</td>
+                                                                    <td>{{ rec.status }}</td>
+                                                                    <td>{{ rec.date_created|date:'d.m.Y H:i' }}</td>
+                                                                    <td>{{ rec.date_created|date:'H:i' }}</td>
+                                                                    <td>{{ rec.notes|default:'-' }}</td>
+                                                                </tr>
+                                                                {% endfor %}
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endwith %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-muted">Нет данных за неделю</div>
+                    {% endif %}
+                {% endfor %}
             </div>
         </div>
     </div>
-{% endif %}
-{% endblock %} 
+</div>
+{% endif %} 
