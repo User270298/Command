@@ -10,6 +10,7 @@ import io
 
 from .models import MeasurementType, EquipmentRecord
 from trips.models import Organization, BusinessTrip
+from .forms import EquipmentRecordForm
 
 @login_required
 def measurement_type_list_view(request):
@@ -28,6 +29,7 @@ def equipment_record_create_view(request):
     user = request.user
     organization = None
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    form = EquipmentRecordForm()
     
     def json_response(success, error=None, redirect_url=None, details=None):
         if is_ajax:
@@ -169,7 +171,8 @@ def equipment_record_create_view(request):
     context = {
         'active_organizations': active_organizations,
         'measurement_types': measurement_types,
-        'selected_organization': organization
+        'selected_organization': organization,
+        'form': form,
     }
     
     return render(request, 'equipment/equipment_record_create.html', context)

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import MeasurementTypeViewSet, EquipmentRecordViewSet
+from .views import MeasurementTypeViewSet, EquipmentRecordViewSet, autocomplete_name, autocomplete_device_type, autocomplete_tech_name, autocomplete_notes
 from .views_templates import (
     measurement_type_list_view, equipment_record_create_view, my_records_view,
     export_csv_view, measurement_type_create_view, search_records_view,
@@ -27,4 +27,11 @@ urlpatterns = [
     path('export-csv/', export_csv_view, name='export_csv'),
     path('search/', search_records_view, name='search_records'),
     path('organization/<int:org_id>/clear/', clear_equipment_records, name='clear_equipment_records'),
+]
+
+urlpatterns += [
+    path('autocomplete-name/', autocomplete_name, name='autocomplete_name'),
+    path('autocomplete-device-type/', autocomplete_device_type, name='autocomplete_device_type'),
+    path('autocomplete-tech-name/', autocomplete_tech_name, name='autocomplete_tech_name'),
+    path('autocomplete-notes/', autocomplete_notes, name='autocomplete_notes'),
 ] 

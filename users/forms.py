@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
+from .models import User
 
 User = get_user_model()
 
@@ -28,3 +29,8 @@ class CustomUserCreationForm(UserCreationForm):
         self.fields['username'].help_text = 'Обязательное поле. Только буквы, цифры и @/./+/-/_'
         self.fields['password1'].help_text = 'Минимум 8 символов'
         self.fields['password2'].help_text = 'Введите тот же пароль, что и выше' 
+
+class CustomUserChangeForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name', 'is_senior', 'isAdmin') 

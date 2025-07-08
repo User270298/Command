@@ -226,6 +226,13 @@
                         <i class="fas fa-sign-out-alt me-2"></i> Выйти
                     </a>
                 </li>
+                {% if user.isAdmin %}
+                <li class="nav-item mt-3">
+                    <a class="nav-link text-warning" href="{% url 'admin_stats' %}">
+                        <i class="fas fa-chart-pie me-2"></i> Админ-статистика
+                    </a>
+                </li>
+                {% endif %}
             </ul>
         </div>
     </div>

@@ -53,15 +53,16 @@
                                         {% endfor %}
                                     </select>
                                 </div>
+                                <!-- Наименование -->
                                 <div class="col-md-6 mb-3">
                                     <label for="name_1" class="form-label">Наименование</label>
-                                    <input type="text" class="form-control" id="name_1" name="name_1" required>
+                                    <input type="text" class="form-control" id="name_1" name="name_1" autocomplete="off">
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="device_type_1" class="form-label">Тип прибора</label>
-                                    <input type="text" class="form-control" id="device_type_1" name="device_type_1" required>
+                                    <input type="text" class="form-control" id="device_type_1" name="device_type_1" autocomplete="off">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="serial_number_1" class="form-label">Номер прибора</label>
@@ -73,9 +74,10 @@
                                     <label for="quantity_1" class="form-label">Количество</label>
                                     <input type="number" class="form-control" id="quantity_1" name="quantity_1" value="1" min="1" required>
                                 </div>
+                                <!-- Наименование техники -->
                                 <div class="col-md-6 mb-3">
                                     <label for="tech_name_1" class="form-label">Наименование техники</label>
-                                    <input type="text" class="form-control" id="tech_name_1" name="tech_name_1" required>
+                                    <input type="text" class="form-control" id="tech_name_1" name="tech_name_1" autocomplete="off">
                                 </div>
                             </div>
                             <div class="row">
@@ -86,9 +88,10 @@
                                         <option value="брак">Брак</option>
                                     </select>
                                 </div>
+                                <!-- Примечание -->
                                 <div class="col-md-6 mb-3">
                                     <label for="notes_1" class="form-label">Примечание <small class="text-muted">(необязательно)</small></label>
-                                    <input type="text" class="form-control" id="notes_1" name="notes_1">
+                                    <input type="text" class="form-control" id="notes_1" name="notes_1" autocomplete="off">
                                 </div>
                             </div>
                         </fieldset>
@@ -118,6 +121,16 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<script>
+$(function() {
+    $("#name_1").autocomplete({ source: "/equipment/autocomplete-name/" });
+    $("#device_type_1").autocomplete({ source: "/equipment/autocomplete-device-type/" });
+    $("#tech_name_1").autocomplete({ source: "/equipment/autocomplete-tech-name/" });
+    $("#notes_1").autocomplete({ source: "/equipment/autocomplete-notes/" });
+});
+</script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let equipmentCount = 1;
@@ -275,6 +288,15 @@
                 
                 // Append the new fieldset to the container
                 document.getElementById('equipment-fields').appendChild(newFieldset);
+
+                // === Добавляем автокомплит для новых полей ===
+                // Используем jQuery, потому что jQuery UI autocomplete уже подключен
+                $(function() {
+                    $("#name_" + equipmentCount).autocomplete({ source: "/equipment/autocomplete-name/" });
+                    $("#device_type_" + equipmentCount).autocomplete({ source: "/equipment/autocomplete-device-type/" });
+                    $("#tech_name_" + equipmentCount).autocomplete({ source: "/equipment/autocomplete-tech-name/" });
+                    $("#notes_" + equipmentCount).autocomplete({ source: "/equipment/autocomplete-notes/" });
+                });
             } finally {
                 setTimeout(() => {
                     isAddingField = false;

@@ -10,6 +10,9 @@ import logging
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from django.contrib.auth.decorators import user_passes_test
+from equipment.models import EquipmentRecord
+from django.db.models import Count
 
 from .models import BusinessTrip, Organization
 from equipment.models import EquipmentRecord
@@ -184,11 +187,8 @@ def organization_detail_view(request, org_id):
     if not (user == trip.senior or user in trip.members.all()):
         return HttpResponseForbidden("Вы не имеете доступа к этой организации")
 
-    # Показываем только записи для этой организации
-    if user == trip.senior:
-        equipment_records = organization.equipment_records.select_related('measurement_type', 'user', 'organization')
-    else:
-        equipment_records = organization.equipment_records.filter(user=user).select_related('measurement_type')
+    # Всегда показываем все приборы этой организации
+    equipment_records = organization.equipment_records.select_related('measurement_type', 'user', 'organization')
 
     # Статистика по типам измерений
     measurement_stats = equipment_records.values('measurement_type__name').distinct()
@@ -436,3 +436,45 @@ def complete_organization(request, org_id):
         return response
     
     return HttpResponseForbidden("Invalid request method") 
+
+@user_passes_test(lambda u: u.is_authenticated and getattr(u, 'isAdmin', False))
+def admin_stats_view(request):
+    from collections import defaultdict
+    from equipment.models import EquipmentRecord, MeasurementType
+    from trips.models import BusinessTrip, Organization
+    from django.contrib.auth import get_user_model
+
+    # Получаем все командировки
+    trips = BusinessTrip.objects.prefetch_related('organizations', 'organizations__equipment_records', 'members', 'senior')
+
+    # Общий сводный отчет по всем командировкам
+    all_stats = defaultdict(lambda: defaultdict(int))  # {user: {measurement_type: count}}
+    for record in EquipmentRecord.objects.all():
+        all_stats[record.user.username][record.measurement_type.name] += record.quantity
+
+    # Структура для подробного отчета по каждой командировке
+    trip_stats = []
+    for trip in trips:
+        trip_info = {
+            'name': trip.name,
+            'city': trip.city,
+            'senior': trip.senior,
+            'organizations': [],
+        }
+        for org in trip.organizations.all():
+            org_info = {
+                'name': org.name,
+                'workers': defaultdict(lambda: defaultdict(int)),  # {user: {measurement_type: count}}
+                'records': [],  # подробные записи
+            }
+            records = org.equipment_records.select_related('user', 'measurement_type')
+            for rec in records:
+                org_info['workers'][rec.user.username][rec.measurement_type.name] += rec.quantity
+                org_info['records'].append(rec)
+            trip_info['organizations'].append(org_info)
+        trip_stats.append(trip_info)
+
+    return render(request, 'admin_stats.html', {
+        'all_stats': all_stats,
+        'trip_stats': trip_stats,
+    }) 

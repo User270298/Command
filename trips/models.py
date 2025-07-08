@@ -20,9 +20,9 @@ class BusinessTrip(models.Model):
     
     @classmethod
     def get_available_users(cls, exclude_user=None):
-        """Получить пользователей, доступных для командировки (is_active=True)"""
+        """Получить пользователей, доступных для командировки (is_active=True, isAdmin=False)"""
         User = get_user_model()
-        available_users = User.objects.filter(is_active=True)
+        available_users = User.objects.filter(is_active=True, isAdmin=False)
         
         if exclude_user:
             available_users = available_users.exclude(id=exclude_user.id)

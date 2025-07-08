@@ -73,13 +73,16 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'metrotrip_db',
-        'USER': 'metrotrip_user',
-        'PASSWORD': 'parkwood2702',
-        'HOST':  '5.35.92.247',
+        # 'USER': 'metrotrip_user',
+        'USER': 'postgres',
+        # 'PASSWORD': 'parkwood2702',
+        'PASSWORD': 'postgres',
+        #'HOST':  '5.35.92.247',  
+        'HOST':  'localhost', 
         'PORT':  '5432',
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
-        },
+        # 'OPTIONS': {
+        #     'client_encoding': 'UTF8',
+        # },
     }
 }
 

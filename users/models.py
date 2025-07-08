@@ -32,6 +32,7 @@ class User(AbstractUser):
         default='active',
         verbose_name='Статус'
     )
+    isAdmin = models.BooleanField(default=False, verbose_name='Админ (доступ к статистике)')
     
     def should_relogin(self):
         """Check if user should relogin (inactive for more than 5 days)"""

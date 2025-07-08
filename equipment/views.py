@@ -9,7 +9,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q, Count
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
 import pandas as pd
 import io
 from reportlab.pdfgen import canvas
@@ -18,6 +18,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from rest_framework.exceptions import ValidationError
+from .models import EquipmentRecord
 
 from .models import MeasurementType, EquipmentRecord
 from .serializers import (
@@ -354,3 +355,23 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
         organization.save()
         
         return FileResponse(output, as_attachment=True, filename=f'equipment_{organization.name}.xlsx')
+
+def autocomplete_name(request):
+    q = request.GET.get('term', '')
+    results = list(EquipmentRecord.objects.filter(name__icontains=q).values_list('name', flat=True).distinct()[:10])
+    return JsonResponse(results, safe=False)
+
+def autocomplete_device_type(request):
+    q = request.GET.get('term', '')
+    results = list(EquipmentRecord.objects.filter(device_type__icontains=q).values_list('device_type', flat=True).distinct()[:10])
+    return JsonResponse(results, safe=False)
+
+def autocomplete_tech_name(request):
+    q = request.GET.get('term', '')
+    results = list(EquipmentRecord.objects.filter(tech_name__icontains=q).values_list('tech_name', flat=True).distinct()[:10])
+    return JsonResponse(results, safe=False)
+
+def autocomplete_notes(request):
+    q = request.GET.get('term', '')
+    results = list(EquipmentRecord.objects.exclude(notes__isnull=True).exclude(notes__exact='').filter(notes__icontains=q).values_list('notes', flat=True).distinct()[:10])
+    return JsonResponse(results, safe=False)
