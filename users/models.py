@@ -3,6 +3,12 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
 class User(AbstractUser):
+    STATUS_CHOICES = [
+        ('active', 'Активен'),
+        ('inactive', 'Неактивен'),
+        ('on_trip', 'В командировке'),
+    ]
+    
     groups = models.ManyToManyField(
         'auth.Group',
         related_name='custom_user_set',
@@ -20,6 +26,12 @@ class User(AbstractUser):
     
     is_senior = models.BooleanField(default=False)
     last_login_date = models.DateTimeField(default=timezone.now)
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='active',
+        verbose_name='Статус'
+    )
     
     def should_relogin(self):
         """Check if user should relogin (inactive for more than 5 days)"""

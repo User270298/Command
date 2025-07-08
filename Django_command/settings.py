@@ -11,8 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-key')
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+DEBUG = os.getenv('DEBUG', 'False') == 'False'
+ALLOWED_HOSTS = ['metrotrip.ru', 'www.metrotrip.ru', 'localhost', '127.0.0.1']
+CSRF_TRUSTED_ORIGINS = ['https://metrotrip.ru', 'https://www.metrotrip.ru']
 
 
 # Application definition
@@ -71,11 +72,11 @@ WSGI_APPLICATION = 'Django_command.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'metrotrip_db'),
-        'USER': os.getenv('POSTGRES_USER', 'metrotrip_user'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'parkwood2702'),
-        'HOST': os.getenv('POSTGRES_HOST', 'db'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'NAME': 'metrotrip_db',
+        'USER': 'metrotrip_user',
+        'PASSWORD': 'parkwood2702',
+        'HOST':  '5.35.92.247',
+        'PORT':  '5432',
         'OPTIONS': {
             'client_encoding': 'UTF8',
         },

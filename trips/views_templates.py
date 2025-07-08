@@ -180,47 +180,26 @@ def close_trip(request, pk):
 def organization_detail_view(request, org_id):
     user = request.user
     organization = get_object_or_404(Organization, id=org_id)
-    
-    # Check if user is a member of the organization's trip
     trip = organization.trip
     if not (user == trip.senior or user in trip.members.all()):
         return HttpResponseForbidden("Вы не имеете доступа к этой организации")
-    
-    # Get equipment records based on user role
+
+    # Показываем только записи для этой организации
     if user == trip.senior:
-        # Get all equipment records from all organizations in this trip
-        equipment_records = EquipmentRecord.objects.filter(
-            organization__trip=trip
-        ).select_related('measurement_type', 'user', 'organization')
+        equipment_records = organization.equipment_records.select_related('measurement_type', 'user', 'organization')
     else:
-        # Regular members see only their records in this organization
-        equipment_records = organization.equipment_records.filter(
-            user=user
-        ).select_related('measurement_type')
-    
-    # Get statistics
-    measurement_stats = {}
-    for record in equipment_records:
-        if record.measurement_type.name not in measurement_stats:
-            measurement_stats[record.measurement_type.name] = 0
-        measurement_stats[record.measurement_type.name] += 1
-    
-    user_stats = {}
-    for record in equipment_records:
-        user_name = record.user.get_full_name() or record.user.username
-        if user_name not in user_stats:
-            user_stats[user_name] = 0
-        user_stats[user_name] += 1
-    
-    context = {
+        equipment_records = organization.equipment_records.filter(user=user).select_related('measurement_type')
+
+    # Статистика по типам измерений
+    measurement_stats = equipment_records.values('measurement_type__name').distinct()
+
+    is_senior = user == trip.senior
+    return render(request, 'trips/organization_detail.html', {
         'organization': organization,
         'equipment_records': equipment_records,
         'measurement_stats': measurement_stats,
-        'user_stats': user_stats,
-        'is_senior': user == trip.senior
-    }
-    
-    return render(request, 'trips/organization_detail.html', context)
+        'is_senior': is_senior,
+    })
 
 @login_required
 def organization_create_view(request):

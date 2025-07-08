@@ -14,6 +14,17 @@ def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        
+        # Проверяем существование пользователя
+        try:
+            user = User.objects.get(username=username)
+            if not user.is_active:
+                messages.error(request, 'Ваш аккаунт неактивен. Пожалуйста, обратитесь к администратору.')
+                return render(request, 'users/login.html')
+        except User.DoesNotExist:
+            messages.error(request, 'Пользователь с таким именем не существует')
+            return render(request, 'users/login.html')
+        
         user = authenticate(request, username=username, password=password)
         
         if user is not None:
@@ -25,7 +36,7 @@ def login_view(request):
             
             return redirect('dashboard')
         else:
-            messages.error(request, 'Неверное имя пользователя или пароль')
+            messages.error(request, 'Неверный пароль')
     
     return render(request, 'users/login.html')
 

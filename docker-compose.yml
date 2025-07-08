@@ -8,10 +8,10 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend:/app
+      - .:/app
       - ./staticfiles:/app/staticfiles
     ports:
-      - "8001:8000"  # локальный порт контейнера
+      - "5432:5432"
     depends_on:
       - db
 
@@ -22,9 +22,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      POSTGRES_DB: metrotrip
-      POSTGRES_USER: metrotripuser
-      POSTGRES_PASSWORD: metrotrippass
+      POSTGRES_DB: metrotrip_db
+      POSTGRES_USER: metrotrip_user
+      POSTGRES_PASSWORD: parkwood2702
 
 volumes:
   postgres_data:
