@@ -13,6 +13,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from django.contrib.auth.decorators import user_passes_test
 from equipment.models import EquipmentRecord
 from django.db.models import Count
+from datetime import datetime, timedelta
 
 from .models import BusinessTrip, Organization
 from equipment.models import EquipmentRecord
@@ -452,6 +453,22 @@ def admin_stats_view(request):
     for record in EquipmentRecord.objects.all():
         all_stats[record.user.username][record.measurement_type.name] += record.quantity
 
+    # Считаем общее количество поверенных СИ для каждого пользователя
+    all_stats_totals = {user: sum(mtypes.values()) for user, mtypes in all_stats.items()}
+
+    # Получаем текущую неделю (понедельник 00:00 - воскресенье 23:59)
+    now = timezone.now()
+    monday = now - timedelta(days=now.weekday())
+    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    sunday = monday + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+    # Общий сводный отчет по всем командировкам ЗА ТЕКУЩУЮ НЕДЕЛЮ
+    all_stats_week = defaultdict(lambda: defaultdict(int))  # {user: {measurement_type: count}}
+    for record in EquipmentRecord.objects.filter(date_created__gte=monday, date_created__lte=sunday):
+        all_stats_week[record.user.username][record.measurement_type.name] += record.quantity
+
+    all_stats_week_totals = {user: sum(mtypes.values()) for user, mtypes in all_stats_week.items()}
+
     # Структура для подробного отчета по каждой командировке
     trip_stats = []
     for trip in trips:
@@ -463,18 +480,23 @@ def admin_stats_view(request):
         }
         for org in trip.organizations.all():
             org_info = {
+                'id': org.id,
                 'name': org.name,
-                'workers': defaultdict(lambda: defaultdict(int)),  # {user: {measurement_type: count}}
-                'records': [],  # подробные записи
+                'workers': defaultdict(lambda: defaultdict(int)),
+                'records': [],
             }
             records = org.equipment_records.select_related('user', 'measurement_type')
             for rec in records:
                 org_info['workers'][rec.user.username][rec.measurement_type.name] += rec.quantity
                 org_info['records'].append(rec)
+            # Преобразуем workers: username -> dict(measurement_type -> int)
+            org_info['workers'] = {k: dict(v) for k, v in org_info['workers'].items()}
             trip_info['organizations'].append(org_info)
         trip_stats.append(trip_info)
-
     return render(request, 'admin_stats.html', {
         'all_stats': all_stats,
+        'all_stats_totals': all_stats_totals,
+        'all_stats_week': all_stats_week,
+        'all_stats_week_totals': all_stats_week_totals,
         'trip_stats': trip_stats,
     }) 

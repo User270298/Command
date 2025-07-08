@@ -1,30 +1,8 @@
 {% extends 'base.html' %}
+{% load equipment_extras %}
 {% block title %}Админ-статистика | Командировка{% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <h2>Общий отчет по всем командировкам</h2>
-    <div class="table-responsive mt-4">
-        <table class="table table-bordered table-hover">
-            <thead class="table-light">
-                <tr>
-                    <th>Поверитель</th>
-                    <th>Тип измерения</th>
-                    <th>Количество поверенных приборов</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user, mtypes in all_stats.items %}
-                    {% for mtype, total in mtypes.items %}
-                    <tr>
-                        <td>{{ user }}</td>
-                        <td>{{ mtype }}</td>
-                        <td>{{ total }}</td>
-                    </tr>
-                    {% endfor %}
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
 
     <h2 class="mt-5">Статистика по командировкам</h2>
     <div class="accordion" id="tripsAccordion">
@@ -39,28 +17,23 @@
                 <div class="accordion-body">
                     {% for org in trip.organizations %}
                         <h5 class="mt-3">Организация: {{ org.name }}</h5>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Поверитель</th>
-                                        <th>Тип измерения</th>
-                                        <th>Количество</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for worker, mtypes in org.workers.items %}
-                                        {% for mtype, total in mtypes.items %}
-                                        <tr>
-                                            <td>{{ worker }}</td>
-                                            <td>{{ mtype }}</td>
-                                            <td>{{ total }}</td>
-                                        </tr>
-                                        {% endfor %}
+                        <!-- Краткая текстовая статистика за неделю -->
+                        <div class="mb-2">
+                            <strong>За текущую неделю:</strong><br>
+                            
+                            {% for worker, mtypes in org.workers.items %}
+                                {% with week_stats=worker|get_week_stats:org.id %}
+                                {% if week_stats %}
+                                    <span><strong>{{ worker }}</strong> —
+                                    {% for mtype, total in week_stats.items %}
+                                        {{ total }} СИ {{ mtype }}{% if not forloop.last %}, {% endif %}
                                     {% endfor %}
-                                </tbody>
-                            </table>
+                                    </span><br>
+                                {% endif %}
+                                {% endwith %}
+                            {% endfor %}
                         </div>
+                        
                         <button class="btn btn-outline-primary btn-sm mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#details{{ forloop.parentloop.counter }}_{{ forloop.counter }}" aria-expanded="false" aria-controls="details{{ forloop.parentloop.counter }}_{{ forloop.counter }}">
                             Подробно
                         </button>
@@ -77,6 +50,7 @@
                                             <th>Количество</th>
                                             <th>Статус</th>
                                             <th>Дата</th>
+                                            <th>Время внесения</th>
                                             <th>Примечание</th>
                                         </tr>
                                     </thead>
@@ -91,6 +65,7 @@
                                             <td>{{ rec.quantity }}</td>
                                             <td>{{ rec.status }}</td>
                                             <td>{{ rec.date_created|date:'d.m.Y H:i' }}</td>
+                                            <td>{{ rec.date_created|date:'H:i' }}</td>
                                             <td>{{ rec.notes|default:'-' }}</td>
                                         </tr>
                                         {% endfor %}
@@ -104,5 +79,7 @@
         </div>
         {% endfor %}
     </div>
+
+    
 </div>
 {% endblock %} 
