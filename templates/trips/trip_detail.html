@@ -92,6 +92,31 @@
                             </form>
                         </div>
                     {% endif %}
+
+                    {% if trip.senior == request.user and not trip.end_date %}
+                        <div class="mb-3">
+                            <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addMemberForm" aria-expanded="false" aria-controls="addMemberForm">
+                                <i class="fas fa-user-plus me-2"></i>Добавить участника
+                            </button>
+                            <div class="collapse mt-2" id="addMemberForm">
+                                <form method="post" action="" class="row g-2 align-items-end">
+                                    {% csrf_token %}
+                                    <div class="col-auto">
+                                        <label for="new_member_id" class="form-label mb-0">Выберите пользователя:</label>
+                                        <select name="new_member_id" id="new_member_id" class="form-select" required>
+                                            <option value="" selected disabled>Выберите пользователя</option>
+                                            {% for user in available_users %}
+                                                <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} ({{ user.email }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-success">Добавить</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -173,41 +198,44 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if organizations %}
+{% if organizations and organizations|length > 0 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('recordsChart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: [{% for org in organizations %}'{{ org.name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
-                datasets: [{
-                    label: 'Записи по организациям',
-                    data: [{% for org in organizations %}{{ org.equipment_records.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                    backgroundColor: [
-                        'rgba(54, 162, 235, 0.7)',
-                        'rgba(255, 99, 132, 0.7)',
-                        'rgba(255, 206, 86, 0.7)',
-                        'rgba(75, 192, 192, 0.7)',
-                        'rgba(153, 102, 255, 0.7)',
-                        'rgba(255, 159, 64, 0.7)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 15
+        const chartCanvas = document.getElementById('recordsChart');
+        if (chartCanvas) {
+            const ctx = chartCanvas.getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: [{% for org in organizations %}'{{ org.name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: 'Записи по организациям',
+                        data: [{% for org in organizations %}{{ org.equipment_records.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(255, 206, 86, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(153, 102, 255, 0.7)',
+                            'rgba(255, 159, 64, 0.7)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 15
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
     });
 </script>
 {% endif %}

@@ -172,31 +172,39 @@
             </div>
         {% endif %}
     {% endif %}
-</div>
-
-{% endblock %} 
-
-{# --- Панель для старшего группы: статистика за неделю по командировке --- #}
-{% if user.is_authenticated and active_trip and user.id == active_trip.senior.id and senior_week_stats %}
-<div class="row mt-5">
-    <div class="col-12">
-        <div class="card border-info">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">Статистика по командировке за неделю</h5>
-            </div>
-            <div class="card-body">
-                {% for org in senior_week_stats %}
-                    <h6 class="mt-3">Организация: {{ org.name }}</h6>
-                    {% if org.workers %}
-                        <ul class="list-group mb-3">
-                            {% for worker, mtypes in org.workers.items %}
-                                <li class="list-group-item">
-                                    <strong>{{ worker }}</strong> —
-                                    {% for mtype, total in mtypes.items %}
-                                        {{ total }} СИ {{ mtype }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                    {% with worker_details=org.details|dict_get:worker %}
-                                        {% if org.details and worker_details %}
+    {# --- Панель для старшего группы: статистика за неделю по командировке --- #}
+    {% if user.is_authenticated and senior_trip_stats %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Статистика по командировке (не зафиксированные данные)</h5>
+                </div>
+                <div class="card-body">
+                    {% for trip in senior_trip_stats %}
+                        {% for org in trip.organizations %}
+                            <div class="d-flex align-items-center mb-2">
+                                <h5 class="mt-3 mb-0 me-3">Организация: {{ org.name }}</h5>
+                            </div>
+                            <div class="mb-2">
+                                <form method="post" action="{% url 'fix_organization' org.id %}" class="d-flex align-items-center">
+                                    {% csrf_token %}
+                                    <label for="tech_staff_count_{{ org.id }}" class="me-2">Тех состав:</label>
+                                    <input type="number" name="tech_staff_count" id="tech_staff_count_{{ org.id }}" value="{{ org.tech_staff_count }}" min="0" class="form-control d-inline-block me-2" style="width: 100px; display: inline-block;" required>
+                                    <button type="submit" class="btn btn-warning btn-sm">Зафиксировать данные</button>
+                                    {% if org.last_fixed_at %}
+                                        <span class="ms-2 text-success small">Зафиксировано: {{ org.last_fixed_at|date:'d.m.Y H:i' }}</span>
+                                    {% endif %}
+                                </form>
+                            </div>
+                            {% if org.workers %}
+                                <ul class="list-group mb-3">
+                                    {% for worker, mtypes in org.workers.items %}
+                                        <li class="list-group-item">
+                                            <strong>{{ worker }}</strong> —
+                                            {% for mtype, total in mtypes.items %}
+                                                {{ total }} СИ {{ mtype }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
                                             <button class="btn btn-link btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#details_{{ org.id }}_{{ forloop.counter }}" aria-expanded="false" aria-controls="details_{{ org.id }}_{{ forloop.counter }}">
                                                 Подробно
                                             </button>
@@ -217,36 +225,39 @@
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {% for mtype, records in worker_details.items %}
-                                                                {% for rec in records %}
-                                                                <tr>
-                                                                    <td>{{ rec.measurement_type.name }}</td>
-                                                                    <td>{{ rec.name }}</td>
-                                                                    <td>{{ rec.device_type }}</td>
-                                                                    <td>{{ rec.serial_number|default:'-' }}</td>
-                                                                    <td>{{ rec.quantity }}</td>
-                                                                    <td>{{ rec.status }}</td>
-                                                                    <td>{{ rec.date_created|date:'d.m.Y H:i' }}</td>
-                                                                    <td>{{ rec.date_created|date:'H:i' }}</td>
-                                                                    <td>{{ rec.notes|default:'-' }}</td>
-                                                                </tr>
+                                                            {% for mtype, records in org.workers.items %}
+                                                                {% for rec in org.records %}
+                                                                    <tr>
+                                                                        <td>{{ rec.measurement_type.name }}</td>
+                                                                        <td>{{ rec.name }}</td>
+                                                                        <td>{{ rec.device_type }}</td>
+                                                                        <td>{{ rec.serial_number|default:'-' }}</td>
+                                                                        <td>{{ rec.quantity }}</td>
+                                                                        <td>{{ rec.status }}</td>
+                                                                        <td>{{ rec.date_created|date:'d.m.Y H:i' }}</td>
+                                                                        <td>{{ rec.date_created|date:'H:i' }}</td>
+                                                                        <td>{{ rec.notes|default:'-' }}</td>
+                                                                    </tr>
                                                                 {% endfor %}
                                                             {% endfor %}
                                                         </tbody>
                                                     </table>
                                                 </div>
                                             </div>
-                                        {% endif %}
-                                    {% endwith %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div class="text-muted">Нет данных за неделю</div>
-                    {% endif %}
-                {% endfor %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <div class="text-muted">Нет новых данных</div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
+    {% endif %} 
 </div>
-{% endif %} 
+
+{% endblock %} 
+

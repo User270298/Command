@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from trips.models import BusinessTrip
 from .forms import CustomUserCreationForm
+from django.contrib.auth.decorators import user_passes_test
 
 User = get_user_model()
 
@@ -126,6 +127,41 @@ def dashboard_view(request):
     if active_trip and hasattr(active_trip, 'organizations'):
         organizations = active_trip.organizations.all()
 
+    # --- Новый блок: статистика для старшего как в admin_stats ---
+    senior_trip_stats = None
+    if user == getattr(active_trip, 'senior', None) and organizations:
+        from collections import defaultdict
+        from equipment.models import EquipmentRecord
+        from datetime import timedelta
+        now = timezone.now()
+        senior_trip_stats = []
+        trip = active_trip
+        trip_info = {
+            'name': trip.name,
+            'city': trip.city,
+            'senior': trip.senior,
+            'organizations': [],
+        }
+        for org in organizations:
+            org_info = {
+                'id': org.id,
+                'name': org.name,
+                'workers': defaultdict(lambda: defaultdict(int)),
+                'records': [],
+                'last_fixed_at': org.last_fixed_at,
+            }
+            # Только новые записи после последней фиксации
+            if org.last_fixed_at:
+                records = org.equipment_records.filter(date_created__gt=org.last_fixed_at).select_related('user', 'measurement_type')
+            else:
+                records = org.equipment_records.all().select_related('user', 'measurement_type')
+            for rec in records:
+                org_info['workers'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name] += rec.quantity
+                org_info['records'].append(rec)
+            org_info['workers'] = {k: dict(v) for k, v in org_info['workers'].items()}
+            trip_info['organizations'].append(org_info)
+        senior_trip_stats.append(trip_info)
+
     # Статистика за неделю для старшего группы
     senior_week_stats = None
     if user == getattr(active_trip, 'senior', None) and organizations:
@@ -167,6 +203,7 @@ def dashboard_view(request):
         'organizations': organizations,
         'recent_records': recent_records,
         'senior_week_stats': senior_week_stats,
+        'senior_trip_stats': senior_trip_stats,
     }
     
     return render(request, 'dashboard.html', context)
@@ -187,3 +224,51 @@ def add_user_view(request):
         form = CustomUserCreationForm()
     
     return render(request, 'users/add_user.html', {'form': form}) 
+
+@user_passes_test(lambda u: u.is_authenticated and getattr(u, 'isAdmin', False))
+def admin_stats_view(request):
+    from collections import defaultdict
+    from equipment.models import EquipmentRecord, MeasurementType
+    from trips.models import BusinessTrip, Organization
+    from django.contrib.auth import get_user_model
+    from django.utils import timezone
+    from datetime import timedelta
+
+    trips = BusinessTrip.objects.prefetch_related('organizations', 'organizations__equipment_records', 'members', 'senior')
+    trip_stats = []
+    now = timezone.now()
+    for trip in trips:
+        trip_info = {
+            'name': trip.name,
+            'city': trip.city,
+            'senior': trip.senior,
+            'organizations': [],
+        }
+        for org in trip.organizations.all():
+            # Принудительно обновим объект из базы
+            org_db = Organization.objects.get(pk=org.pk)
+            print('org.id:', org_db.id, 'tech_staff_fixed:', org_db.tech_staff_fixed)
+            org_info = {
+                'id': org.id,
+                'name': org.name,
+                'workers': defaultdict(lambda: defaultdict(int)),
+                'records': [],
+                'tech_staff_fixed': org_db.tech_staff_fixed,
+                'fixed_until': org.fixed_until,
+            }
+            if org.last_fixed_at and org.fixed_until and now < org.fixed_until:
+                records = org.fixed_records.all().select_related('user', 'measurement_type')
+            elif org.last_fixed_at and org.fixed_until and now >= org.fixed_until:
+                records = org.equipment_records.filter(date_created__gt=org.last_fixed_at).select_related('user', 'measurement_type')
+            else:
+                records = org.equipment_records.all().select_related('user', 'measurement_type')
+            for rec in records:
+                org_info['workers'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name] += rec.quantity
+                org_info['records'].append(rec)
+            org_info['workers'] = {k: dict(v) for k, v in org_info['workers'].items()}
+            trip_info['organizations'].append(org_info)
+        trip_stats.append(trip_info)
+    return render(request, 'admin_stats.html', {
+        'trip_stats': trip_stats,
+        'now': now,
+    }) 

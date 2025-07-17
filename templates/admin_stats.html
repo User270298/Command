@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load equipment_extras %}
+{% load dict_get %}
 {% block title %}Админ-статистика | Командировка{% endblock %}
 {% block content %}
 <div class="container mt-4">
@@ -17,6 +18,7 @@
                 <div class="accordion-body">
                     {% for org in trip.organizations %}
                         <h5 class="mt-3">Организация: {{ org.name }}</h5>
+                        <div class="mb-2"><strong>Тех состав:</strong> {{ org|dict_get:'tech_staff_fixed' }}</div>
                         <!-- Краткая текстовая статистика за неделю -->
                         <div class="mb-2">
                             <strong>За текущую неделю:</strong><br>

@@ -360,20 +360,42 @@ class EquipmentRecordViewSet(viewsets.ModelViewSet):
 
 def autocomplete_name(request):
     q = request.GET.get('term', '')
-    results = list(EquipmentRecord.objects.filter(name__icontains=q).values_list('name', flat=True).distinct()[:10])
+    results = list(
+        EquipmentRecord.objects.filter(name__icontains=q)
+        .values_list('name', flat=True)
+        .distinct()
+        .order_by('name')[:10]
+    )
     return JsonResponse(results, safe=False)
 
 def autocomplete_device_type(request):
     q = request.GET.get('term', '')
-    results = list(EquipmentRecord.objects.filter(device_type__icontains=q).values_list('device_type', flat=True).distinct()[:10])
+    results = list(
+        EquipmentRecord.objects.filter(device_type__icontains=q)
+        .values_list('device_type', flat=True)
+        .distinct()
+        .order_by('device_type')[:10]
+    )
     return JsonResponse(results, safe=False)
 
 def autocomplete_tech_name(request):
     q = request.GET.get('term', '')
-    results = list(EquipmentRecord.objects.filter(tech_name__icontains=q).values_list('tech_name', flat=True).distinct()[:10])
+    results = list(
+        EquipmentRecord.objects.filter(tech_name__icontains=q)
+        .values_list('tech_name', flat=True)
+        .distinct()
+        .order_by('tech_name')[:10]
+    )
     return JsonResponse(results, safe=False)
 
 def autocomplete_notes(request):
     q = request.GET.get('term', '')
-    results = list(EquipmentRecord.objects.exclude(notes__isnull=True).exclude(notes__exact='').filter(notes__icontains=q).values_list('notes', flat=True).distinct()[:10])
+    results = list(
+        EquipmentRecord.objects.exclude(notes__isnull=True)
+        .exclude(notes__exact='')
+        .filter(notes__icontains=q)
+        .values_list('notes', flat=True)
+        .distinct()
+        .order_by('notes')[:10]
+    )
     return JsonResponse(results, safe=False)

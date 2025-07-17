@@ -14,6 +14,7 @@ from django.contrib.auth.decorators import user_passes_test
 from equipment.models import EquipmentRecord
 from django.db.models import Count
 from datetime import datetime, timedelta
+from django.views.decorators.http import require_POST
 
 from .models import BusinessTrip, Organization
 from equipment.models import EquipmentRecord
@@ -31,10 +32,37 @@ def trip_list_view(request):
 @login_required
 def trip_detail_view(request, trip_id):
     """
-    Отображает детальную информацию о командировке
+    Отображает детальную информацию о командировке и позволяет старшему добавлять участников
     """
     trip = get_object_or_404(BusinessTrip, id=trip_id, members=request.user)
-    return render(request, 'trips/trip_detail.html', {'trip': trip})
+    organizations = Organization.objects.filter(trip=trip)
+    
+    # Добавление участника (только для старшего и если командировка не завершена)
+    if request.method == 'POST' and request.user == trip.senior and not trip.end_date:
+        new_member_id = request.POST.get('new_member_id')
+        if new_member_id:
+            try:
+                new_member = User.objects.get(id=new_member_id)
+                if new_member not in trip.members.all():
+                    # Проверяем, что пользователь не в другой активной командировке
+                    if not BusinessTrip.objects.filter(
+                        Q(senior=new_member) | Q(members=new_member),
+                        end_date__isnull=True
+                    ).exists():
+                        trip.members.add(new_member)
+                        messages.success(request, f'Пользователь {new_member.get_full_name() or new_member.username} добавлен в командировку.')
+                    else:
+                        messages.warning(request, f'Пользователь {new_member.get_full_name() or new_member.username} уже участвует в другой активной командировке.')
+                else:
+                    messages.info(request, 'Пользователь уже является участником этой командировки.')
+            except User.DoesNotExist:
+                messages.error(request, 'Пользователь не найден.')
+        return redirect('trip_detail', trip_id=trip.id)
+
+    # Для формы выбора новых участников
+    available_users = BusinessTrip.get_available_users().exclude(id__in=trip.members.values_list('id', flat=True))
+    
+    return render(request, 'trips/trip_detail.html', {'trip': trip, 'available_users': available_users, 'organizations': organizations})
 
 @login_required
 def create_trip_view(request):
@@ -438,6 +466,58 @@ def complete_organization(request, org_id):
     
     return HttpResponseForbidden("Invalid request method") 
 
+@login_required
+def fix_organization(request, org_id):
+    user = request.user
+    organization = get_object_or_404(Organization, id=org_id)
+    trip = organization.trip
+    if user != trip.senior:
+        return HttpResponseForbidden("Только старший группы может фиксировать данные")
+    if request.method == 'POST':
+        try:
+            tech_staff_count = int(request.POST.get('tech_staff_count', '').strip())
+            if tech_staff_count < 0:
+                raise ValueError
+        except Exception:
+            messages.error(request, 'Введите корректное значение "Тех состав" перед фиксацией!')
+            return redirect('dashboard')
+        print('Фиксируем тех состав:', tech_staff_count)
+        now = timezone.now()
+        days_ahead = (4 - now.weekday()) % 7
+        friday_20 = now + timedelta(days=days_ahead)
+        friday_20 = friday_20.replace(hour=20, minute=0, second=0, microsecond=0)
+        if organization.last_fixed_at:
+            new_records = organization.equipment_records.filter(date_created__gt=organization.last_fixed_at, date_created__lte=now)
+        else:
+            new_records = organization.equipment_records.filter(date_created__lte=now)
+        organization.fixed_records.set(new_records)
+        organization.last_fixed_at = now
+        organization.fixed_until = friday_20
+        organization.tech_staff_count = tech_staff_count
+        organization.tech_staff_fixed = tech_staff_count
+        print('Сохраняем в organization.tech_staff_fixed:', organization.tech_staff_fixed)
+        organization.save()
+        messages.success(request, f'Данные по организации "{organization.name}" зафиксированы!')
+        return redirect('dashboard')
+    return redirect('dashboard')
+
+@require_POST
+@login_required
+def update_tech_staff(request, org_id):
+    user = request.user
+    organization = get_object_or_404(Organization, id=org_id)
+    trip = organization.trip
+    if user != trip.senior:
+        return HttpResponseForbidden("Только старший группы может изменять тех состав")
+    try:
+        count = int(request.POST.get('tech_staff_count', 0))
+        organization.tech_staff_count = count
+        organization.save()
+        messages.success(request, f'Тех состав обновлён: {count}')
+    except Exception:
+        messages.error(request, 'Ошибка при обновлении тех состава')
+    return redirect('dashboard')
+
 @user_passes_test(lambda u: u.is_authenticated and getattr(u, 'isAdmin', False))
 def admin_stats_view(request):
     from collections import defaultdict
@@ -479,17 +559,25 @@ def admin_stats_view(request):
             'organizations': [],
         }
         for org in trip.organizations.all():
+            # Принудительно обновим объект из базы
+            org_db = Organization.objects.get(pk=org.pk)
             org_info = {
                 'id': org.id,
                 'name': org.name,
                 'workers': defaultdict(lambda: defaultdict(int)),
                 'records': [],
+                'tech_staff_fixed': org_db.tech_staff_fixed,
+                'fixed_until': org.fixed_until,
             }
-            records = org.equipment_records.select_related('user', 'measurement_type')
+            if org.last_fixed_at and org.fixed_until and now < org.fixed_until:
+                records = org.fixed_records.all().select_related('user', 'measurement_type')
+            elif org.last_fixed_at and org.fixed_until and now >= org.fixed_until:
+                records = org.equipment_records.filter(date_created__gt=org.last_fixed_at).select_related('user', 'measurement_type')
+            else:
+                records = org.equipment_records.all().select_related('user', 'measurement_type')
             for rec in records:
-                org_info['workers'][rec.user.username][rec.measurement_type.name] += rec.quantity
+                org_info['workers'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name] += rec.quantity
                 org_info['records'].append(rec)
-            # Преобразуем workers: username -> dict(measurement_type -> int)
             org_info['workers'] = {k: dict(v) for k, v in org_info['workers'].items()}
             trip_info['organizations'].append(org_info)
         trip_stats.append(trip_info)
