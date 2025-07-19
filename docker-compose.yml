@@ -11,20 +11,6 @@ services:
       - .:/app
       - ./staticfiles:/app/staticfiles
     ports:
-      - "5432:5432"
-    depends_on:
-      - db
-
-  db:
-    image: postgres:15
-    container_name: metrotrip_db
-    restart: always
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      POSTGRES_DB: metrotrip_db
-      POSTGRES_USER: metrotrip_user
-      POSTGRES_PASSWORD: parkwood2702
-
-volumes:
-  postgres_data:
+      - "8001:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Для доступа к хосту

@@ -14,6 +14,8 @@ from django.contrib.auth.decorators import user_passes_test
 from equipment.models import EquipmentRecord
 from django.db.models import Count
 from datetime import datetime, timedelta
+from .forms import TechnicalStaffRecordForm
+from .models import TechnicalStaffRecord
 
 from .models import BusinessTrip, Organization
 from equipment.models import EquipmentRecord
@@ -438,12 +440,26 @@ def complete_organization(request, org_id):
     
     return HttpResponseForbidden("Invalid request method") 
 
+def get_current_week_start(now):
+    # Если пятница после 18:00 или позже — неделя начинается с текущей пятницы 18:00
+    weekday = now.weekday()
+    if (weekday == 4 and now.hour >= 18) or weekday > 4:
+        # Найти текущую пятницу 18:00
+        friday_18 = now.replace(hour=18, minute=0, second=0, microsecond=0) - timedelta(days=weekday-4 if weekday>=4 else 0)
+        if now >= friday_18:
+            return friday_18
+    # Иначе — с предыдущего понедельника 00:00
+    monday = now - timedelta(days=weekday)
+    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    return monday
+
 @user_passes_test(lambda u: u.is_authenticated and getattr(u, 'isAdmin', False))
 def admin_stats_view(request):
     from collections import defaultdict
     from equipment.models import EquipmentRecord, MeasurementType
     from trips.models import BusinessTrip, Organization
     from django.contrib.auth import get_user_model
+    from .models import TechnicalStaffRecord
 
     # Получаем все командировки
     trips = BusinessTrip.objects.prefetch_related('organizations', 'organizations__equipment_records', 'members', 'senior')
@@ -458,13 +474,16 @@ def admin_stats_view(request):
 
     # Получаем текущую неделю (понедельник 00:00 - воскресенье 23:59)
     now = timezone.now()
-    monday = now - timedelta(days=now.weekday())
-    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
-    sunday = monday + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    week_start = get_current_week_start(now)
+    week_end = week_start + timedelta(days=7) if week_start.weekday() == 4 else week_start + timedelta(days=4, hours=18)
+
+    # --- ДОБАВЛЯЕМ: выборка числа тех. состава за неделю по организациям ---
+    tech_staff_records = TechnicalStaffRecord.objects.filter(created_at__gte=week_start, created_at__lt=week_end)
+    tech_staff_by_org = {rec.organization_id: rec for rec in tech_staff_records}
 
     # Общий сводный отчет по всем командировкам ЗА ТЕКУЩУЮ НЕДЕЛЮ
     all_stats_week = defaultdict(lambda: defaultdict(int))  # {user: {measurement_type: count}}
-    for record in EquipmentRecord.objects.filter(date_created__gte=monday, date_created__lte=sunday):
+    for record in EquipmentRecord.objects.filter(date_created__gte=week_start, date_created__lt=week_end):
         all_stats_week[record.user.username][record.measurement_type.name] += record.quantity
 
     all_stats_week_totals = {user: sum(mtypes.values()) for user, mtypes in all_stats_week.items()}
@@ -478,19 +497,41 @@ def admin_stats_view(request):
             'senior': trip.senior,
             'organizations': [],
         }
-        for org in trip.organizations.all():
+        for org in trip.organizations.filter(is_closed=False):
             org_info = {
                 'id': org.id,
                 'name': org.name,
                 'workers': defaultdict(lambda: defaultdict(int)),
                 'records': [],
+                'tech_staff': tech_staff_by_org.get(org.id),
+                'usernames_to_names': {},
             }
-            records = org.equipment_records.select_related('user', 'measurement_type')
+            records = org.equipment_records.filter(
+                date_created__gte=week_start,
+                date_created__lt=week_end
+            ).select_related('user', 'measurement_type')
             for rec in records:
                 org_info['workers'][rec.user.username][rec.measurement_type.name] += rec.quantity
                 org_info['records'].append(rec)
-            # Преобразуем workers: username -> dict(measurement_type -> int)
+                org_info['usernames_to_names'][rec.user.username] = rec.user.get_full_name() or rec.user.username
+            week_stats_exist = any(sum(mtypes.values()) > 0 for mtypes in org_info['workers'].values())
             org_info['workers'] = {k: dict(v) for k, v in org_info['workers'].items()}
+            org_info['has_week_stats'] = week_stats_exist
+            # Краткая статистика по работникам и типам измерений
+            from collections import defaultdict
+            short_stats = defaultdict(lambda: defaultdict(int))
+            for rec in org_info['records']:
+                worker = rec.user.get_full_name() or rec.user.username if rec.user else "—"
+                mtype_name = rec.measurement_type.name if rec.measurement_type else "Неизвестно"
+                short_stats[worker][mtype_name] += rec.quantity
+            for rec in org_info['records']:
+                 print(f'REC: user={rec.user}, measurement_type={rec.measurement_type}, quantity={rec.quantity}')
+
+            # Исправление: удалить все ключи, значения которых не словарь
+            bad_keys = [k for k, v in short_stats.items() if not isinstance(v, dict)]
+            for k in bad_keys:
+                del short_stats[k]
+            org_info['short_stats'] = {k: dict(v) for k, v in short_stats.items() if isinstance(v, dict)}
             trip_info['organizations'].append(org_info)
         trip_stats.append(trip_info)
     return render(request, 'admin_stats.html', {
@@ -499,4 +540,53 @@ def admin_stats_view(request):
         'all_stats_week': all_stats_week,
         'all_stats_week_totals': all_stats_week_totals,
         'trip_stats': trip_stats,
+        'week_start': week_start,
+        'week_end': week_end,
     }) 
+
+@login_required
+def tech_staff_entry_view(request):
+    user = request.user
+    # Проверяем, что пользователь — старший группы
+    if not getattr(user, 'is_senior', False):
+        return HttpResponseForbidden("Только старший группы может вносить данные тех. состава.")
+
+    now = timezone.now()
+    # Проверка: только до 12:00 пятницы
+    if not (now.weekday() == 4 and now.hour < 12):
+        messages.error(request, "Вносить данные можно только до 12:00 пятницы.")
+        return redirect('trip_list')
+
+    # Получаем все незакрытые организации, по которым нет записи за эту неделю
+    monday = now.date() - timedelta(days=now.weekday())
+    organizations = Organization.objects.filter(is_closed=False, trip__senior=user)
+    orgs_to_fill = []
+    for org in organizations:
+        if not TechnicalStaffRecord.objects.filter(organization=org, week=monday).exists():
+            orgs_to_fill.append(org)
+
+    forms_list = []
+    if request.method == 'POST':
+        success = True
+        for org in orgs_to_fill:
+            value = request.POST.get(f'value_{org.id}')
+            if value:
+                form = TechnicalStaffRecordForm({'organization': org.id, 'value': value})
+                if form.is_valid():
+                    rec = form.save(commit=False)
+                    rec.user = user
+                    rec.week = monday
+                    rec.save()
+                else:
+                    success = False
+                    forms_list.append((org, form))
+            else:
+                forms_list.append((org, TechnicalStaffRecordForm(organization=org)))
+        if success:
+            messages.success(request, "Данные успешно внесены!")
+            return redirect('trip_list')
+    else:
+        for org in orgs_to_fill:
+            forms_list.append((org, TechnicalStaffRecordForm(organization=org)))
+
+    return render(request, 'trips/tech_staff_entry.html', {'forms_list': forms_list}) 

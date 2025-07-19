@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Внесение числа тех. состава{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Внесение числа тех. состава по незакрытым организациям</h2>
+    <form method="post">
+        {% csrf_token %}
+        {% if forms_list %}
+            {% for org, form in forms_list %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>Организация:</strong> {{ org.name }}
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            {{ form.value.label_tag }}
+                            <input type="number" name="value_{{ org.id }}" min="0" class="form-control" placeholder="Число тех. состава" required>
+                        </div>
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+        {% else %}
+            <div class="alert alert-info">Нет незакрытых организаций, по которым нужно внести данные.</div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %} 

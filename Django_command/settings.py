@@ -86,6 +86,21 @@ DATABASES = {
     }
 }
 
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'metrotrip_db',
+#         'USER': 'metrotrip_user',
+#         'USER': 'postgres',
+#         'PASSWORD': 'postgres',
+#         'HOST':  'localhost', 
+#         'PORT':  '5432',
+#         'OPTIONS': {
+#             'client_encoding': 'UTF8',
+#         },
+#     }
+# }
 # Custom user model
 AUTH_USER_MODEL = 'users.User'
 

@@ -59,3 +59,18 @@ class Organization(models.Model):
         ordering = ['-created_date']
         verbose_name = "Организация"
         verbose_name_plural = "Организации"
+
+class TechnicalStaffRecord(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='tech_staff_records', verbose_name="Организация")
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, verbose_name="Старший группы")
+    week = models.DateField(verbose_name="Неделя (дата понедельника)")
+    value = models.PositiveIntegerField(verbose_name="Число тех. состава")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Время внесения")
+
+    class Meta:
+        unique_together = ('organization', 'week')
+        verbose_name = "Запись тех. состава"
+        verbose_name_plural = "Записи тех. состава"
+
+    def __str__(self):
+        return f"{self.organization} | {self.week} | {self.value}"

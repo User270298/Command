@@ -5,8 +5,11 @@ from django.contrib.auth import login, authenticate, logout
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from trips.models import BusinessTrip
+from trips.models import BusinessTrip, Organization
+from trips.forms import TechnicalStaffRecordForm
+from trips.models import TechnicalStaffRecord
 from .forms import CustomUserCreationForm
+from trips.views_templates import get_current_week_start
 
 User = get_user_model()
 
@@ -120,55 +123,82 @@ def dashboard_view(request):
     except Exception as e:
         # Если возникает ошибка с полем city, временно игнорируем её
         print(f"Ошибка при получении активной командировки: {e}")
-    
-    # Get organizations for active trip
-    organizations = []
-    if active_trip and hasattr(active_trip, 'organizations'):
-        organizations = active_trip.organizations.all()
 
-    # Статистика за неделю для старшего группы
+    # Get organizations for active trip (filter: незакрытые и с приборами за неделю)
+    organizations = []
+    tech_staff_by_org = {}
+    forms_list = []
     senior_week_stats = None
-    if user == getattr(active_trip, 'senior', None) and organizations:
-        from collections import defaultdict
-        from equipment.models import EquipmentRecord
+    if active_trip and hasattr(active_trip, 'organizations'):
         from datetime import timedelta
+        from equipment.models import EquipmentRecord
         now = timezone.now()
-        monday = now - timedelta(days=now.weekday())
-        monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
-        sunday = monday + timedelta(days=6, hours=23, minutes=59, seconds=59)
-        senior_week_stats = []
-        for org in organizations:
-            org_stats = {
-                'id': org.id,
-                'name': org.name,
-                'workers': defaultdict(lambda: defaultdict(int)),  # {user: {measurement_type: count}}
-                'details': defaultdict(lambda: defaultdict(list)),  # {user: {measurement_type: [EquipmentRecord, ...]}}
-            }
-            records = EquipmentRecord.objects.filter(
-                organization=org,
-                date_created__gte=monday,
-                date_created__lte=sunday
-            ).select_related('user', 'measurement_type')
-            for rec in records:
-                org_stats['workers'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name] += rec.quantity
-                org_stats['details'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name].append(rec)
-            # Преобразуем defaultdict в dict для шаблона
-            org_stats['workers'] = {k: dict(v) for k, v in org_stats['workers'].items()}
-            org_stats['details'] = {k: dict(v) for k, v in org_stats['details'].items()}
-            senior_week_stats.append(org_stats)
-    
+        week_start = get_current_week_start(now)
+        week_end = week_start + timedelta(days=7) if week_start.weekday() == 4 else week_start + timedelta(days=4, hours=18)
+        all_orgs = active_trip.organizations.filter(is_closed=False)
+        organizations = list(all_orgs)  # Показываем все незакрытые
+        if user == getattr(active_trip, 'senior', None):
+            tech_staff_records = TechnicalStaffRecord.objects.filter(organization__in=organizations, created_at__gte=week_start, created_at__lt=week_end)
+            tech_staff_by_org = {rec.organization_id: rec for rec in tech_staff_records}
+            if request.method == 'POST':
+                org_id = request.POST.get('org_id')
+                value = request.POST.get('value')
+                if org_id and value:
+                    org = next((o for o in organizations if str(o.id) == str(org_id)), None)
+                    if org and org.id not in tech_staff_by_org:
+                        form = TechnicalStaffRecordForm({'organization': org.id, 'value': value})
+                        if form.is_valid():
+                            rec = form.save(commit=False)
+                            rec.user = user
+                            rec.week = week_start
+                            rec.save()
+                            tech_staff_by_org[org.id] = rec
+                            messages.success(request, f"Данные по тех. составу для '{org.name}' успешно внесены!")
+                            return redirect('dashboard')
+                        else:
+                            forms_list.append((org, form, True))
+            for org in organizations:
+                if org.id not in tech_staff_by_org:
+                    has_records = EquipmentRecord.objects.filter(
+                        organization=org,
+                        date_created__gte=week_start,
+                        date_created__lt=week_end
+                    ).exists()
+                    form = TechnicalStaffRecordForm(organization=org)
+                    forms_list.append((org, form, has_records))
+            from collections import defaultdict
+            senior_week_stats = []
+            for org in organizations:
+                org_stats = {
+                    'id': org.id,
+                    'name': org.name,
+                    'workers': defaultdict(lambda: defaultdict(int)),
+                    'details': defaultdict(lambda: defaultdict(list)),
+                    'tech_staff': tech_staff_by_org.get(org.id),
+                }
+                records = EquipmentRecord.objects.filter(
+                    organization=org,
+                    date_created__gte=week_start,
+                    date_created__lt=week_end
+                ).select_related('user', 'measurement_type')
+                for rec in records:
+                    org_stats['workers'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name] += rec.quantity
+                    org_stats['details'][rec.user.get_full_name() or rec.user.username][rec.measurement_type.name].append(rec)
+                org_stats['workers'] = {k: dict(v) for k, v in org_stats['workers'].items()}
+                org_stats['details'] = {k: dict(v) for k, v in org_stats['details'].items()}
+                senior_week_stats.append(org_stats)
     # Get recent equipment records
     recent_records = []
     if hasattr(user, 'equipment_records'):
         recent_records = user.equipment_records.order_by('-date_created')[:5]
-    
     context = {
         'active_trip': active_trip,
         'organizations': organizations,
         'recent_records': recent_records,
         'senior_week_stats': senior_week_stats,
+        'forms_list': forms_list,
+        'tech_staff_by_org': tech_staff_by_org,
     }
-    
     return render(request, 'dashboard.html', context)
 
 @login_required

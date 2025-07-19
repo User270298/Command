@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load equipment_extras %}
+{% load dict_get %}
 {% block title %}Админ-статистика | Командировка{% endblock %}
 {% block content %}
 <div class="container mt-4">
@@ -19,19 +20,28 @@
                         <h5 class="mt-3">Организация: {{ org.name }}</h5>
                         <!-- Краткая текстовая статистика за неделю -->
                         <div class="mb-2">
-                            <strong>За текущую неделю:</strong><br>
+                            <strong>За неделю (с {{ week_start|date:'d.m.Y H:i' }} по {{ week_end|date:'d.m.Y H:i' }}):</strong><br>
+                            {% if org.tech_staff %}
+                                <span class="badge bg-info text-dark">Тех. состав: {{ org.tech_staff.value }} (внес: {{ org.tech_staff.user.get_full_name|default:org.tech_staff.user.username }})</span><br>
+                            {% endif %}
                             
-                            {% for worker, mtypes in org.workers.items %}
-                                {% with week_stats=worker|get_week_stats:org.id %}
-                                {% if week_stats %}
-                                    <span><strong>{{ worker }}</strong> —
-                                    {% for mtype, total in week_stats.items %}
-                                        {{ total }} СИ {{ mtype }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                    </span><br>
-                                {% endif %}
-                                {% endwith %}
-                            {% endfor %}
+                            {% if org.short_stats %}
+                                
+
+                                {% for worker, mtypes in org.short_stats.items %}
+                                    {% if mtypes.items %}
+                                        <span><strong>{{ worker }}</strong> —
+                                        {% for mtype, total in mtypes.items %}
+                                            <span class="badge bg-secondary">{{ total }} СИ {{ mtype }}</span>{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                        (итого: <strong>{{ mtypes|dict_sum }}</strong>)
+                                        </span><br>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">Нет данных за неделю</span>
+                            {% endif %}
+                            
                         </div>
                         
                         <button class="btn btn-outline-primary btn-sm mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#details{{ forloop.parentloop.counter }}_{{ forloop.counter }}" aria-expanded="false" aria-controls="details{{ forloop.parentloop.counter }}_{{ forloop.counter }}">
