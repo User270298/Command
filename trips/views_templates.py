@@ -20,6 +20,11 @@ from .models import TechnicalStaffRecord
 from .models import BusinessTrip, Organization
 from equipment.models import EquipmentRecord
 
+import openpyxl
+from openpyxl.styles import Alignment, Font, Border, Side
+from openpyxl.utils import get_column_letter
+from io import BytesIO
+
 User = get_user_model()
 
 @login_required
@@ -336,122 +341,181 @@ def generate_weekly_report(request, org_id):
     return response
 
 @login_required
+def download_organization_list(request, org_id):
+    user = request.user
+    organization = get_object_or_404(Organization, id=org_id)
+    if user != organization.trip.senior:
+        return HttpResponseForbidden("Только старший группы может скачивать перечень организации")
+    # Получить все записи
+    records = organization.equipment_records.all().select_related('measurement_type', 'user')
+    doc = Document()
+    style = doc.styles['Normal']
+    style.font.name = 'Times New Roman'
+    style.font.size = Pt(10)
+    title = doc.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title.add_run('ЭТАЛОНЫ (СИ), АТТЕСТОВАННЫЕ (ПОВЕРЕННЫЕ) СОГЛАСНО ПЛАНА-ГРАФИКА\nПРЕДСТАВЛЕНИЯ ВОИНСКИМИ ЧАСТЯМИ (ПОДРАЗДЕЛЕНИЯМИ) НА АТТЕСТАЦИЮ\nЭТАЛОНОВ (ПОВЕРКУ СИ) В ПЛАНИРУЕМОМ ГОДУ')
+    title_run.font.name = 'Times New Roman'
+    title_run.font.size = Pt(10)
+    title_run.bold = True
+    table = doc.add_table(rows=1, cols=9)
+    table.style = 'Table Grid'
+    header_cells = table.rows[0].cells
+    headers = ['№ п/п', 'Наименование', 'Тип', 'Заводской номер', 'Количество', 
+              'Результат аттестации (поверки)', 'Дата выполнения аттестации (поверки)',
+              'Тип ВВСТ, в состав которого входит эталон (СИ)',
+              'Примечание (номер извещения о непригодности к применению (свидетельства об аттестации (о поверке))']
+    for i, header in enumerate(headers):
+        cell = header_cells[i]
+        cell.text = header
+        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = cell.paragraphs[0].runs[0]
+        run.font.name = 'Times New Roman'
+        run.font.size = Pt(10)
+        run.bold = True
+    measurement_groups = {}
+    for record in records:
+        if record.measurement_type.name not in measurement_groups:
+            measurement_groups[record.measurement_type.name] = []
+        measurement_groups[record.measurement_type.name].append(record)
+    row_num = 1
+    for measurement_type, records in measurement_groups.items():
+        row_cells = table.add_row().cells
+        row_cells[0].text = f'Средства измерений {measurement_type}'
+        row_cells[0].merge(row_cells[8])
+        cell = row_cells[0]
+        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = cell.paragraphs[0].runs[0]
+        run.font.name = 'Times New Roman'
+        run.font.size = Pt(10)
+        run.bold = True
+        for record in records:
+            row_cells = table.add_row().cells
+            row_cells[0].text = str(row_num)
+            row_cells[1].text = record.name
+            row_cells[2].text = record.device_type
+            row_cells[3].text = record.serial_number or ''
+            row_cells[4].text = str(record.quantity)
+            row_cells[5].text = record.status
+            row_cells[6].text = f'С {timezone.now().strftime("%d.%m.%Y")} по {(timezone.now() + timezone.timedelta(days=365)).strftime("%d.%m.%Y")}'
+            row_cells[7].text = record.tech_name
+            row_cells[8].text = record.notes or ''
+            for cell in row_cells:
+                cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in cell.paragraphs[0].runs:
+                    run.font.name = 'Times New Roman'
+                    run.font.size = Pt(10)
+            row_num += 1
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    response['Content-Disposition'] = f'attachment; filename=final_report_{organization.name}.docx'
+    doc.save(response)
+    return response
+
+@login_required
 def complete_organization(request, org_id):
     user = request.user
     organization = get_object_or_404(Organization, id=org_id)
-    
-    # Check if user is the senior of the organization's trip
     if user != organization.trip.senior:
         return HttpResponseForbidden("Только старший группы может завершать организации")
-    
     if request.method == 'POST':
-        # Get all records for this organization
-        records = organization.equipment_records.all().select_related('measurement_type', 'user')
-        
-        # Create Word document
-        doc = Document()
-        
-        # Set default font for entire document
-        style = doc.styles['Normal']
-        style.font.name = 'Times New Roman'
-        style.font.size = Pt(10)
-        
-        # Add title and header
-        title = doc.add_paragraph()
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        title_run = title.add_run('ЭТАЛОНЫ (СИ), АТТЕСТОВАННЫЕ (ПОВЕРЕННЫЕ) СОГЛАСНО ПЛАНА-ГРАФИКА\nПРЕДСТАВЛЕНИЯ ВОИНСКИМИ ЧАСТЯМИ (ПОДРАЗДЕЛЕНИЯМИ) НА АТТЕСТАЦИЮ\nЭТАЛОНОВ (ПОВЕРКУ СИ) В ПЛАНИРУЕМОМ ГОДУ')
-        title_run.font.name = 'Times New Roman'
-        title_run.font.size = Pt(10)
-        title_run.bold = True
-        
-        # Add table header
-        table = doc.add_table(rows=1, cols=9)
-        table.style = 'Table Grid'
-        
-        # Set table header
-        header_cells = table.rows[0].cells
-        headers = ['№ п/п', 'Наименование', 'Тип', 'Заводской номер', 'Количество', 
-                  'Результат аттестации (поверки)', 'Дата выполнения аттестации (поверки)',
-                  'Тип ВВСТ, в состав которого входит эталон (СИ)',
-                  'Примечание (номер извещения о непригодности к применению (свидетельства об аттестации (о поверке))']
-        
-        for i, header in enumerate(headers):
-            cell = header_cells[i]
-            cell.text = header
-            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-            run = cell.paragraphs[0].runs[0]
-            run.font.name = 'Times New Roman'
-            run.font.size = Pt(10)
-            run.bold = True
-        
-        # Group records by measurement type
-        measurement_groups = {}
-        for record in records:
-            if record.measurement_type.name not in measurement_groups:
-                measurement_groups[record.measurement_type.name] = []
-            measurement_groups[record.measurement_type.name].append(record)
-        
-        # Add records
-        row_num = 1
-        for measurement_type, records in measurement_groups.items():
-            # Add measurement type header
-            row_cells = table.add_row().cells
-            row_cells[0].text = f'Средства измерений {measurement_type}'
-            row_cells[0].merge(row_cells[8])  # Merge all cells in the row
-            cell = row_cells[0]
-            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-            run = cell.paragraphs[0].runs[0]
-            run.font.name = 'Times New Roman'
-            run.font.size = Pt(10)
-            run.bold = True
-            
-            # Add records for this measurement type
-            for record in records:
-                row_cells = table.add_row().cells
-                row_cells[0].text = str(row_num)
-                row_cells[1].text = record.name
-                row_cells[2].text = record.device_type
-                row_cells[3].text = record.serial_number or ''
-                row_cells[4].text = str(record.quantity)
-                row_cells[5].text = record.status
-                row_cells[6].text = f'С {timezone.now().strftime("%d.%m.%Y")} по {(timezone.now() + timezone.timedelta(days=365)).strftime("%d.%m.%Y")}'
-                row_cells[7].text = record.tech_name
-                row_cells[8].text = record.notes or ''
-                
-                # Center align all cells and set font
-                for cell in row_cells:
-                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in cell.paragraphs[0].runs:
-                        run.font.name = 'Times New Roman'
-                        run.font.size = Pt(10)
-                
-                row_num += 1
-        
-        # Save the document
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-        response['Content-Disposition'] = f'attachment; filename=final_report_{organization.name}.docx'
-        doc.save(response)
-        
-        # Mark organization as closed
         organization.is_closed = True
         organization.save()
-        
-        return response
-    
-    return HttpResponseForbidden("Invalid request method") 
+        messages.success(request, 'Организация успешно закрыта')
+        return redirect('organization_detail', org_id=organization.id)
+    return HttpResponseForbidden("Invalid request method")
+
+@login_required
+def download_plan_assignment_excel(request, org_id):
+    user = request.user
+    organization = get_object_or_404(Organization, id=org_id)
+    if user != organization.trip.senior:
+        return HttpResponseForbidden("Только старший группы может скачивать План-Задание")
+    records = organization.equipment_records.all().select_related('measurement_type', 'user')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "План-Задание"
+
+    # Шапка
+    ws.merge_cells('A1:K1')
+    ws['A1'] = 'I. Аттестация эталонов и поверка средств измерений подразделений воинских частей (организаций)'
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws['A1'].font = Font(bold=True)
+
+    ws.merge_cells('A2:E2')
+    ws['A2'] = 'Задание (аттестовать, поверить, отремонтировать)'
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells('F2:K2')
+    ws['F2'] = 'Отчет'
+    ws['F2'].alignment = Alignment(horizontal='center', vertical='center')
+
+    # Заголовки
+    headers = [
+        '№ п/п',
+        'Наименование эталонов (СИ)',
+        'Тип эталона (СИ)',
+        'Заводской номер',
+        'Количество',
+        'Планируемое время аттестации (поверки), ч',
+        'Результат аттестации (поверки) (годен, брак)',
+        'Затрачено времени на аттестацию (поверку), ч',
+        'Израсходованные ЗИП, материалы, ГСМ при аттестации (поверке), ремонте',
+        'Фамилия и инициалы лица, проводившего аттестацию (поверку), ремонт',
+        'Примечание',
+    ]
+    ws.append(headers)
+
+    # Стили для заголовков
+    for col in range(1, len(headers) + 1):
+        cell = ws.cell(row=3, column=col)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        ws.column_dimensions[get_column_letter(col)].width = 18
+
+    # Данные
+    for idx, record in enumerate(records, 1):
+        ws.append([
+            idx,
+            record.name,
+            record.device_type,
+            record.serial_number or '',
+            record.quantity,
+            '',  # Планируемое время аттестации (поверки), ч
+            record.status,
+            '',  # Затрачено времени на аттестацию (поверку), ч
+            '',  # Израсходованные ЗИП, материалы, ГСМ
+            record.user.get_full_name() or record.user.username,
+            record.notes or '',
+        ])
+        for col in range(1, len(headers) + 1):
+            ws.cell(row=idx+3, column=col).alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    # Границы
+    thin = Side(border_style="thin", color="000000")
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+        for cell in row:
+            cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+    # Ответ
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=plan_assignment_{organization.name}.xlsx'
+    return response
 
 def get_current_week_start(now):
-    # Если пятница после 18:00 или позже — неделя начинается с текущей пятницы 18:00
-    weekday = now.weekday()
-    if (weekday == 4 and now.hour >= 18) or weekday > 4:
-        # Найти текущую пятницу 18:00
-        friday_18 = now.replace(hour=18, minute=0, second=0, microsecond=0) - timedelta(days=weekday-4 if weekday>=4 else 0)
-        if now >= friday_18:
-            return friday_18
-    # Иначе — с предыдущего понедельника 00:00
-    monday = now - timedelta(days=weekday)
-    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
-    return monday
+    # Всегда возвращать ближайшую прошедшую субботу 16:00
+    weekday = now.weekday()  # 0=Monday, 5=Saturday
+    days_since_saturday = (weekday - 5) % 7
+    last_saturday = now - timedelta(days=days_since_saturday)
+    last_saturday_16 = last_saturday.replace(hour=16, minute=0, second=0, microsecond=0)
+    if now < last_saturday_16:
+        last_saturday_16 -= timedelta(days=7)
+    return last_saturday_16
+
+# В местах, где вычисляется week_end:
+# week_end = week_start + timedelta(days=7)
 
 @user_passes_test(lambda u: u.is_authenticated and getattr(u, 'isAdmin', False))
 def admin_stats_view(request):
@@ -475,7 +539,7 @@ def admin_stats_view(request):
     # Получаем текущую неделю (понедельник 00:00 - воскресенье 23:59)
     now = timezone.now()
     week_start = get_current_week_start(now)
-    week_end = week_start + timedelta(days=7) if week_start.weekday() == 4 else week_start + timedelta(days=4, hours=18)
+    week_end = week_start + timedelta(days=7)
 
     # --- ДОБАВЛЯЕМ: выборка числа тех. состава за неделю по организациям ---
     tech_staff_records = TechnicalStaffRecord.objects.filter(created_at__gte=week_start, created_at__lt=week_end)

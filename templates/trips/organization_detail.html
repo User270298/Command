@@ -17,12 +17,25 @@
                             <a href="{% url 'generate_weekly_report' org_id=organization.id %}" class="btn btn-info me-2">
                                 <i class="fas fa-file-excel me-2"></i> Отчет за неделю
                             </a>
-                            <form method="post" action="{% url 'complete_organization' org_id=organization.id %}" class="d-inline">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger" onclick="return confirm('Вы уверены, что хотите завершить работу с этой организацией?')">
-                                    <i class="fas fa-check-circle me-2"></i> Завершить организацию
-                                </button>
-                            </form>
+                            {% if is_senior and not organization.is_closed %}
+                                <form method="post" action="{% url 'download_organization_list' org_id=organization.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-info me-2">
+                                        <i class="fas fa-download me-2"></i> Скачать перечень
+                                    </button>
+                                </form>
+                                <form method="get" action="{% url 'download_plan_assignment_excel' org_id=organization.id %}" class="d-inline">
+                                    <button type="submit" class="btn btn-warning me-2">
+                                        <i class="fas fa-file-excel me-2"></i> Скачать План-Задание
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'complete_organization' org_id=organization.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Вы уверены, что хотите завершить работу с этой организацией?')">
+                                        <i class="fas fa-check-circle me-2"></i> Завершить организацию
+                                    </button>
+                                </form>
+                            {% endif %}
                         {% endif %}
                     {% endif %}
                 </div>

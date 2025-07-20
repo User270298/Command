@@ -134,7 +134,7 @@ def dashboard_view(request):
         from equipment.models import EquipmentRecord
         now = timezone.now()
         week_start = get_current_week_start(now)
-        week_end = week_start + timedelta(days=7) if week_start.weekday() == 4 else week_start + timedelta(days=4, hours=18)
+        week_end = week_start + timedelta(days=7)
         all_orgs = active_trip.organizations.filter(is_closed=False)
         organizations = list(all_orgs)  # Показываем все незакрытые
         if user == getattr(active_trip, 'senior', None):
