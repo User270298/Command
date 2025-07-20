@@ -3,6 +3,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from .models import User
 
+
 User = get_user_model()
 
 class CustomUserCreationForm(UserCreationForm):
@@ -10,10 +11,11 @@ class CustomUserCreationForm(UserCreationForm):
     first_name = forms.CharField(required=True, max_length=30)
     last_name = forms.CharField(required=True, max_length=30)
     is_senior = forms.BooleanField(required=False, label='Старший группы')
+    invite_code = forms.CharField(label='Уникальный код', max_length=20, required=True)
     
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'is_senior', 'password1', 'password2')
+        fields = ('username', 'email', 'first_name', 'last_name', 'is_senior', 'password1', 'password2', 'invite_code')
         
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -24,6 +26,7 @@ class CustomUserCreationForm(UserCreationForm):
         self.fields['last_name'].label = 'Фамилия'
         self.fields['password1'].label = 'Пароль'
         self.fields['password2'].label = 'Подтверждение пароля'
+        self.fields['invite_code'].label = 'Уникальный код'
         
         # Добавляем подсказки
         self.fields['username'].help_text = 'Обязательное поле. Только буквы, цифры и @/./+/-/_'

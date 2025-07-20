@@ -68,6 +68,18 @@
             {% endif %}
         </div>
         
+        <div class="mb-3">
+            <label for="id_invite_code" class="form-label">Уникальный код</label>
+            <input type="text" name="invite_code" id="id_invite_code" class="form-control" required>
+            {% if form.invite_code.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.invite_code.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
         {% if form.non_field_errors %}
             <div class="alert alert-danger">
                 {% for error in form.non_field_errors %}

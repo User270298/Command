@@ -48,12 +48,17 @@ def logout_view(request):
     return redirect('login')
 
 def register_view(request):
+    VALID_CODES = ["knNiQwceyNDXGtY-M50bO"]  # Можно вынести в настройки или БД
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('dashboard')
+            code = form.cleaned_data.get("invite_code", "")
+            if code not in VALID_CODES:
+                form.add_error("invite_code", "Неверный уникальный код!")
+            else:
+                user = form.save()
+                login(request, user)
+                return redirect('dashboard')
     else:
         form = CustomUserCreationForm()
     
