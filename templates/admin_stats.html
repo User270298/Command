@@ -31,10 +31,12 @@
                                 {% for worker, mtypes in org.short_stats.items %}
                                     {% if mtypes.items %}
                                         <span><strong>{{ worker }}</strong> —
-                                        {% for mtype, total in mtypes.items %}
-                                            <span class="badge bg-secondary">{{ total }} СИ {{ mtype }}</span>{% if not forloop.last %}, {% endif %}
+                                        {% for mtype, stat in mtypes.items %}
+                                            <span class="badge bg-secondary">
+                                                {{ stat.total }} СИ {{ mtype }}{% if stat.rejected %} (Из них {{ stat.rejected }} брак){% endif %}
+                                            </span>{% if not forloop.last %}, {% endif %}
                                         {% endfor %}
-                                        (итого: <strong>{{ mtypes|dict_sum }}</strong>)
+                                        (итого: <strong>{{ mtypes|dict_sum:'total' }}</strong>)
                                         </span><br>
                                     {% endif %}
                                 {% endfor %}

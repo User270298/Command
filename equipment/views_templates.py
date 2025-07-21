@@ -94,10 +94,12 @@ def equipment_record_create_view(request):
                 name = request.POST.get(f'name_{i}')
                 device_type = request.POST.get(f'device_type_{i}')
                 serial_number = request.POST.get(f'serial_number_{i}')
+                serial_numbers = request.POST.get(f'serial_numbers_{i}')
                 quantity = request.POST.get(f'quantity_{i}')
                 tech_name = request.POST.get(f'tech_name_{i}')
                 notes = request.POST.get(f'notes_{i}')
-                
+                status = request.POST.get(f'status_{i}')
+
                 if not all([measurement_type_id, name, device_type, quantity, tech_name]):
                     missing_fields = []
                     if not measurement_type_id: missing_fields.append('тип измерения')
@@ -105,45 +107,76 @@ def equipment_record_create_view(request):
                     if not device_type: missing_fields.append('тип прибора')
                     if not quantity: missing_fields.append('количество')
                     if not tech_name: missing_fields.append('наименование техники')
-                    
                     error_message = f'Пожалуйста, заполните все обязательные поля для прибора {i}: {", ".join(missing_fields)}'
                     return json_response(False, error_message)
-                
+
                 try:
                     measurement_type = MeasurementType.objects.get(id=measurement_type_id)
                 except MeasurementType.DoesNotExist:
                     return json_response(False, f'Тип измерения с ID {measurement_type_id} не найден')
-                
-                # Check for duplicate record
-                duplicate = EquipmentRecord.objects.filter(
-                    organization=organization,
-                    measurement_type=measurement_type,
-                    name=name,
-                    device_type=device_type,
-                    serial_number=serial_number,
-                    tech_name=tech_name
-                ).exists()
-                
-                if duplicate:
-                    return json_response(False, f'Запись с такими параметрами уже существует для прибора {i}')
-                
-                try:
-                    # Create equipment record
-                    record = EquipmentRecord.objects.create(
-                        measurement_type=measurement_type,
+
+                # Если есть список номеров, создаём отдельную запись для каждого
+                if serial_numbers:
+                    serials = [s.strip() for s in serial_numbers.split(',') if s.strip()]
+                    if not serials:
+                        return json_response(False, f'Введите хотя бы один номер прибора для прибора {i}')
+                    for sn in serials:
+                        duplicate = EquipmentRecord.objects.filter(
+                            organization=organization,
+                            measurement_type=measurement_type,
+                            name=name,
+                            device_type=device_type,
+                            serial_number=sn,
+                            tech_name=tech_name
+                        ).exists()
+                        if duplicate:
+                            return json_response(False, f'Запись с такими параметрами уже существует для номера "{sn}" (прибор {i})')
+                        try:
+                            record = EquipmentRecord.objects.create(
+                                measurement_type=measurement_type,
+                                organization=organization,
+                                user=user,
+                                name=name,
+                                device_type=device_type,
+                                serial_number=sn,
+                                quantity=1,
+                                tech_name=tech_name,
+                                notes=notes,
+                                status=status
+                            )
+                            created_records.append(record)
+                        except Exception as e:
+                            import traceback
+                            return json_response(False, f'Ошибка при создании записи для номера "{sn}" (прибор {i}): {str(e)}', details=traceback.format_exc())
+                else:
+                    # Старое поведение: один номер, quantity как указано
+                    duplicate = EquipmentRecord.objects.filter(
                         organization=organization,
-                        user=user,
+                        measurement_type=measurement_type,
                         name=name,
                         device_type=device_type,
                         serial_number=serial_number,
-                        quantity=quantity,
-                        tech_name=tech_name,
-                        notes=notes
-                    )
-                    created_records.append(record)
-                except Exception as e:
-                    import traceback
-                    return json_response(False, f'Ошибка при создании записи для прибора {i}: {str(e)}', details=traceback.format_exc())
+                        tech_name=tech_name
+                    ).exists()
+                    if duplicate:
+                        return json_response(False, f'Запись с такими параметрами уже существует для прибора {i}')
+                    try:
+                        record = EquipmentRecord.objects.create(
+                            measurement_type=measurement_type,
+                            organization=organization,
+                            user=user,
+                            name=name,
+                            device_type=device_type,
+                            serial_number=serial_number,
+                            quantity=quantity,
+                            tech_name=tech_name,
+                            notes=notes,
+                            status=status
+                        )
+                        created_records.append(record)
+                    except Exception as e:
+                        import traceback
+                        return json_response(False, f'Ошибка при создании записи для прибора {i}: {str(e)}', details=traceback.format_exc())
             
             if not created_records:
                 return json_response(False, 'Не удалось создать записи об оборудовании')

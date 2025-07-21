@@ -351,13 +351,15 @@ def download_organization_list(request, org_id):
     doc = Document()
     style = doc.styles['Normal']
     style.font.name = 'Times New Roman'
-    style.font.size = Pt(10)
+    style.font.size = Pt(8)
+    style.font.italic = True
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title_run = title.add_run('ЭТАЛОНЫ (СИ), АТТЕСТОВАННЫЕ (ПОВЕРЕННЫЕ) СОГЛАСНО ПЛАНА-ГРАФИКА\nПРЕДСТАВЛЕНИЯ ВОИНСКИМИ ЧАСТЯМИ (ПОДРАЗДЕЛЕНИЯМИ) НА АТТЕСТАЦИЮ\nЭТАЛОНОВ (ПОВЕРКУ СИ) В ПЛАНИРУЕМОМ ГОДУ')
     title_run.font.name = 'Times New Roman'
-    title_run.font.size = Pt(10)
+    title_run.font.size = Pt(8)
     title_run.bold = True
+    title_run.italic = True
     table = doc.add_table(rows=1, cols=9)
     table.style = 'Table Grid'
     header_cells = table.rows[0].cells
@@ -368,11 +370,21 @@ def download_organization_list(request, org_id):
     for i, header in enumerate(headers):
         cell = header_cells[i]
         cell.text = header
-        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = cell.paragraphs[0].runs[0]
-        run.font.name = 'Times New Roman'
-        run.font.size = Pt(10)
-        run.bold = True
+        # Стиль для заголовка
+        for paragraph in cell.paragraphs:
+            for run in paragraph.runs:
+                run.font.name = 'Times New Roman'
+                run.font.size = Pt(8)
+                run.bold = True
+                run.italic = True
+        # Выравнивание: 'Наименование' (i==1) — влево и по центру, остальные — по центру
+        if i == 1:
+            paragraph = cell.paragraphs[0]
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            # В Word нет одновременного left+center, но можно сделать left, а текст вручную центрировать
+        else:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     measurement_groups = {}
     for record in records:
         if record.measurement_type.name not in measurement_groups:
@@ -381,14 +393,16 @@ def download_organization_list(request, org_id):
     row_num = 1
     for measurement_type, records in measurement_groups.items():
         row_cells = table.add_row().cells
-        row_cells[0].text = f'Средства измерений {measurement_type}'
+        row_cells[0].text = f'Средства {measurement_type}'
         row_cells[0].merge(row_cells[8])
         cell = row_cells[0]
-        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = cell.paragraphs[0].runs[0]
-        run.font.name = 'Times New Roman'
-        run.font.size = Pt(10)
-        run.bold = True
+        for paragraph in cell.paragraphs:
+            for run in paragraph.runs:
+                run.font.name = 'Times New Roman'
+                run.font.size = Pt(8)
+                run.bold = True
+                run.italic = True
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         for record in records:
             row_cells = table.add_row().cells
             row_cells[0].text = str(row_num)
@@ -400,12 +414,30 @@ def download_organization_list(request, org_id):
             row_cells[6].text = f'С {timezone.now().strftime("%d.%m.%Y")} по {(timezone.now() + timezone.timedelta(days=365)).strftime("%d.%m.%Y")}'
             row_cells[7].text = record.tech_name
             row_cells[8].text = record.notes or ''
-            for cell in row_cells:
-                cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for run in cell.paragraphs[0].runs:
-                    run.font.name = 'Times New Roman'
-                    run.font.size = Pt(10)
+            for i, cell in enumerate(row_cells):
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.name = 'Times New Roman'
+                        run.font.size = Pt(8)
+                        run.italic = True
+                    # Столбец 'Наименование' (i==1): влево и по центру, остальные — по центру
+                    if i == 1:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    else:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             row_num += 1
+
+    all_records = organization.equipment_records.all().select_related('measurement_type', 'user')
+    # Подсчет количества приборов
+    total_devices = sum(r.quantity for r in all_records)
+    rejected_devices = sum(r.quantity for r in all_records if str(r.status).strip().lower() in ['брак', 'негоден', 'не годен', 'забраковано'])
+    summary_paragraph = doc.add_paragraph()
+    summary_text = f"Всего приборов - {total_devices}, из них забраковано - {rejected_devices}"
+    run = summary_paragraph.add_run(summary_text)
+    run.font.name = 'Times New Roman'
+    run.font.size = Pt(8)
+    run.italic = True
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     response['Content-Disposition'] = f'attachment; filename=final_report_{organization.name}.docx'
     doc.save(response)
@@ -582,20 +614,19 @@ def admin_stats_view(request):
             org_info['workers'] = {k: dict(v) for k, v in org_info['workers'].items()}
             org_info['has_week_stats'] = week_stats_exist
             # Краткая статистика по работникам и типам измерений
-            from collections import defaultdict
-            short_stats = defaultdict(lambda: defaultdict(int))
+            short_stats = defaultdict(lambda: defaultdict(lambda: {'total': 0, 'rejected': 0}))
             for rec in org_info['records']:
                 worker = rec.user.get_full_name() or rec.user.username if rec.user else "—"
                 mtype_name = rec.measurement_type.name if rec.measurement_type else "Неизвестно"
-                short_stats[worker][mtype_name] += rec.quantity
-            for rec in org_info['records']:
-                 print(f'REC: user={rec.user}, measurement_type={rec.measurement_type}, quantity={rec.quantity}')
-
+                short_stats[worker][mtype_name]['total'] += rec.quantity
+                if str(rec.status).strip().lower() in ['брак', 'негоден', 'не годен', 'забраковано']:
+                    short_stats[worker][mtype_name]['rejected'] += rec.quantity
             # Исправление: удалить все ключи, значения которых не словарь
             bad_keys = [k for k, v in short_stats.items() if not isinstance(v, dict)]
             for k in bad_keys:
                 del short_stats[k]
-            org_info['short_stats'] = {k: dict(v) for k, v in short_stats.items() if isinstance(v, dict)}
+            # Преобразуем к обычному dict для шаблона
+            org_info['short_stats'] = {k: {mt: dict(vv) for mt, vv in v.items()} for k, v in short_stats.items() if isinstance(v, dict)}
             trip_info['organizations'].append(org_info)
         trip_stats.append(trip_info)
     return render(request, 'admin_stats.html', {

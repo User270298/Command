@@ -208,8 +208,8 @@
                                 {% for worker, mtypes in org.workers.items %}
                                     <li class="list-group-item">
                                         <strong>{{ worker }}</strong> —
-                                        {% for mtype, total in mtypes.items %}
-                                            {{ total }} СИ {{ mtype }}{% if not forloop.last %}, {% endif %}
+                                        {% for mtype, stat in mtypes.items %}
+                                            {{ stat.total }} СИ {{ mtype }}{% if stat.rejected %} (Из них {{ stat.rejected }} брак){% endif %}{% if not forloop.last %}, {% endif %}
                                         {% endfor %}
                                         {% with worker_details=org.details|dict_get:worker %}
                                             {% if org.details and worker_details %}
