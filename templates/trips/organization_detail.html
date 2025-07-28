@@ -112,16 +112,15 @@
                                         <td>{{ record.user.get_full_name|default:record.user.username }}</td>
                                         {% endif %}
                                         <td>
-                                            <a href="#" class="btn btn-sm btn-outline-primary" title="Просмотр">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            {% if not organization.is_closed %}
-                                                <a href="#" class="btn btn-sm btn-outline-secondary" title="Редактировать">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="#" class="btn btn-sm btn-outline-danger" title="Удалить">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
+                                            {% if is_senior or record.user == request.user %}
+                                                {% if not organization.is_closed or is_senior %}
+                                                    <a href="{% url 'equipment_record_edit' record.id %}" class="btn btn-sm btn-outline-secondary" title="Редактировать">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'equipment_record_delete' record.id %}" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                {% endif %}
                                             {% endif %}
                                         </td>
                                     </tr>

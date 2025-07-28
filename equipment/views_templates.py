@@ -375,3 +375,76 @@ def clear_equipment_records(request, org_id):
         return redirect('organization_detail', org_id=org_id)
     
     return render(request, 'equipment/clear_records_confirm.html', {'organization': organization}) 
+
+@login_required
+def equipment_record_edit_view(request, record_id):
+    """Редактирование записи об оборудовании"""
+    user = request.user
+    record = get_object_or_404(EquipmentRecord, id=record_id)
+    organization = record.organization
+    trip = organization.trip
+    
+    # Проверяем права доступа
+    if not (user == trip.senior or user in trip.members.all()):
+        return HttpResponseForbidden("Вы не имеете доступа к этой записи")
+    
+    # Проверяем, может ли пользователь редактировать эту запись
+    can_edit = (
+        user == trip.senior or  # Старший может редактировать все записи
+        (user == record.user and not organization.is_closed)  # Пользователь может редактировать свои записи в открытой организации
+    )
+    
+    if not can_edit:
+        return HttpResponseForbidden("У вас нет прав для редактирования этой записи")
+    
+    if request.method == 'POST':
+        form = EquipmentRecordForm(request.POST, instance=record)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Запись успешно обновлена')
+            return redirect('organization_detail', org_id=organization.id)
+    else:
+        form = EquipmentRecordForm(instance=record)
+    
+    context = {
+        'form': form,
+        'record': record,
+        'organization': organization,
+        'is_senior': user == trip.senior,
+    }
+    
+    return render(request, 'equipment/equipment_record_edit.html', context)
+
+@login_required
+def equipment_record_delete_view(request, record_id):
+    """Удаление записи об оборудовании"""
+    user = request.user
+    record = get_object_or_404(EquipmentRecord, id=record_id)
+    organization = record.organization
+    trip = organization.trip
+    
+    # Проверяем права доступа
+    if not (user == trip.senior or user in trip.members.all()):
+        return HttpResponseForbidden("Вы не имеете доступа к этой записи")
+    
+    # Проверяем, может ли пользователь удалить эту запись
+    can_delete = (
+        user == trip.senior or  # Старший может удалять все записи
+        (user == record.user and not organization.is_closed)  # Пользователь может удалять свои записи в открытой организации
+    )
+    
+    if not can_delete:
+        return HttpResponseForbidden("У вас нет прав для удаления этой записи")
+    
+    if request.method == 'POST':
+        record.delete()
+        messages.success(request, 'Запись успешно удалена')
+        return redirect('organization_detail', org_id=organization.id)
+    
+    context = {
+        'record': record,
+        'organization': organization,
+        'is_senior': user == trip.senior,
+    }
+    
+    return render(request, 'equipment/equipment_record_delete.html', context) 

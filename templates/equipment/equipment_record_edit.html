@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование записи | Учет Оборудования{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">Редактирование записи об оборудовании</h3>
+                <a href="{% url 'organization_detail' organization.id %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-arrow-left me-2"></i> Назад к организации
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Информация о записи</h6>
+                        <p><strong>Организация:</strong> {{ organization.name }}</p>
+                        <p><strong>Создана:</strong> {{ record.date_created|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Автор:</strong> {{ record.user.get_full_name|default:record.user.username }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Права доступа</h6>
+                        {% if is_senior %}
+                            <p><span class="badge bg-warning text-dark">Старший группы</span> - можете редактировать любые записи</p>
+                        {% else %}
+                            <p><span class="badge bg-info text-dark">Участник</span> - можете редактировать только свои записи</p>
+                        {% endif %}
+                        {% if organization.is_closed %}
+                            <p><span class="badge bg-secondary">Организация закрыта</span> - редактирование недоступно</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.measurement_type.id_for_label }}" class="form-label">
+                                Тип измерения
+                                <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Внимательно выберите тип измерения, в зависимости от того что вы выберите данные подадутся"></i>
+                            </label>
+                            {{ form.measurement_type }}
+                            {% if form.measurement_type.errors %}
+                                <div class="text-danger">{{ form.measurement_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                Наименование
+                                <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Заполняйте с большой буквы, внимательно проверьте название"></i>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.device_type.id_for_label }}" class="form-label">
+                                Тип прибора
+                                <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Внимательно проверьте тип прибора"></i>
+                            </label>
+                            {{ form.device_type }}
+                            {% if form.device_type.errors %}
+                                <div class="text-danger">{{ form.device_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.serial_number.id_for_label }}" class="form-label">
+                                Номер прибора
+                                <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Номер пишется когда прибор один, если у вас однотипные приборы в одном подразделении то вы можете через + добавлять их номера, они добавятся как отдельные номерные приборы"></i>
+                            </label>
+                            {{ form.serial_number }}
+                            {% if form.serial_number.errors %}
+                                <div class="text-danger">{{ form.serial_number.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.quantity.id_for_label }}" class="form-label">
+                                Количество
+                                <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="По умолчанию 1, если несколько приборов, то номер не ставится"></i>
+                            </label>
+                            {{ form.quantity }}
+                            {% if form.quantity.errors %}
+                                <div class="text-danger">{{ form.quantity.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.tech_name.id_for_label }}" class="form-label">
+                                Наименование техники (Подразделения)
+                                <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Укажите краткую аббревиатуру подразделения или техники"></i>
+                            </label>
+                            {{ form.tech_name }}
+                            {% if form.tech_name.errors %}
+                                <div class="text-danger">{{ form.tech_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">Статус</label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                                <div class="text-danger">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Примечание <small class="text-muted">(необязательно)</small></label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'organization_detail' organization.id %}" class="btn btn-outline-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i> Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<script>
+$(function() {
+    // Инициализация tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    
+    // Автодополнение для полей
+    $("#id_name").autocomplete({ source: "/equipment/autocomplete-name/" });
+    $("#id_device_type").autocomplete({ source: "/equipment/autocomplete-device-type/" });
+    $("#id_tech_name").autocomplete({ source: "/equipment/autocomplete-tech-name/" });
+    $("#id_notes").autocomplete({ source: "/equipment/autocomplete-notes/" });
+});
+</script>
+{% endblock %} 

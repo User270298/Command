@@ -5,7 +5,7 @@ from .views import MeasurementTypeViewSet, EquipmentRecordViewSet, autocomplete_
 from .views_templates import (
     measurement_type_list_view, equipment_record_create_view, my_records_view,
     export_csv_view, measurement_type_create_view, search_records_view,
-    clear_equipment_records
+    clear_equipment_records, equipment_record_edit_view, equipment_record_delete_view
 )
 
 # API routes
@@ -27,6 +27,8 @@ urlpatterns = [
     path('export-csv/', export_csv_view, name='export_csv'),
     path('search/', search_records_view, name='search_records'),
     path('organization/<int:org_id>/clear/', clear_equipment_records, name='clear_equipment_records'),
+    path('record/<int:record_id>/edit/', equipment_record_edit_view, name='equipment_record_edit'),
+    path('record/<int:record_id>/delete/', equipment_record_delete_view, name='equipment_record_delete'),
 ]
 
 urlpatterns += [

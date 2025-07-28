@@ -246,13 +246,20 @@ def organization_detail_view(request, org_id):
     if not (user == trip.senior or user in trip.members.all()):
         return HttpResponseForbidden("Вы не имеете доступа к этой организации")
 
-    # Всегда показываем все приборы этой организации
-    equipment_records = organization.equipment_records.select_related('measurement_type', 'user', 'organization')
-
-    # Статистика по типам измерений
-    measurement_stats = equipment_records.values('measurement_type__name').distinct()
-
     is_senior = user == trip.senior
+    
+    # Если пользователь старший - показываем все записи, иначе только его записи
+    if is_senior:
+        equipment_records = organization.equipment_records.select_related('measurement_type', 'user', 'organization')
+    else:
+        equipment_records = organization.equipment_records.filter(user=user).select_related('measurement_type', 'user', 'organization')
+
+    # Статистика по типам измерений (для старшего - все, для пользователя - только его)
+    if is_senior:
+        measurement_stats = organization.equipment_records.values('measurement_type__name').distinct()
+    else:
+        measurement_stats = equipment_records.values('measurement_type__name').distinct()
+
     return render(request, 'trips/organization_detail.html', {
         'organization': organization,
         'equipment_records': equipment_records,
