@@ -41,7 +41,12 @@ def trip_detail_view(request, trip_id):
     Отображает детальную информацию о командировке
     """
     trip = get_object_or_404(BusinessTrip, id=trip_id, members=request.user)
-    return render(request, 'trips/trip_detail.html', {'trip': trip})
+    # Получаем все организации командировки (включая закрытые)
+    organizations = trip.organizations.all().order_by('-created_date')
+    return render(request, 'trips/trip_detail.html', {
+        'trip': trip,
+        'organizations': organizations
+    })
 
 @login_required
 def create_trip_view(request):
@@ -346,27 +351,56 @@ def download_organization_list(request, org_id):
     organization = get_object_or_404(Organization, id=org_id)
     if user != organization.trip.senior:
         return HttpResponseForbidden("Только старший группы может скачивать перечень организации")
+    
     # Получить все записи
     records = organization.equipment_records.all().select_related('measurement_type', 'user')
+    
+    # Определяем порядок типов измерений
+    measurement_order = [
+        'измерения геометрических величин',
+        'измерения механических величин',
+        'измерения параметров потока, расхода, уровня и объема веществ',
+        'измерения давления и вакуумные',
+        'измерения физико-химического состава и свойств веществ',
+        'теплофизические и температурные измерения',
+        'измерения времени и частоты',
+        'измерения электрических и магнитных величин',
+        'радиотехнические и радиоэлектронные измерения',
+        'измерения акустических величин',
+        'оптико-физические измерения',
+        'измерения характеристик ионизирующих излучений и ядерных констант',
+        'метеорологические измерения',
+        'специальные измерения (в соответствии со специализацией)'
+    ]
+    
     doc = Document()
+    
+    # Устанавливаем меньший шрифт для всего документа
     style = doc.styles['Normal']
     style.font.name = 'Times New Roman'
-    style.font.size = Pt(8)
+    style.font.size = Pt(5)  # Уменьшили с 8 до 7
     style.font.italic = True
+    
+    # Заголовок
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title_run = title.add_run('ЭТАЛОНЫ (СИ), АТТЕСТОВАННЫЕ (ПОВЕРЕННЫЕ) СОГЛАСНО ПЛАНА-ГРАФИКА\nПРЕДСТАВЛЕНИЯ ВОИНСКИМИ ЧАСТЯМИ (ПОДРАЗДЕЛЕНИЯМИ) НА АТТЕСТАЦИЮ\nЭТАЛОНОВ (ПОВЕРКУ СИ) В ПЛАНИРУЕМОМ ГОДУ')
     title_run.font.name = 'Times New Roman'
-    title_run.font.size = Pt(8)
+    title_run.font.size = Pt(5)  # Уменьшили с 8 до 7
     title_run.bold = True
     title_run.italic = True
+    
+    # Создаем таблицу
     table = doc.add_table(rows=1, cols=9)
     table.style = 'Table Grid'
     header_cells = table.rows[0].cells
+    
     headers = ['№ п/п', 'Наименование', 'Тип', 'Заводской номер', 'Количество', 
               'Результат аттестации (поверки)', 'Дата выполнения аттестации (поверки)',
               'Тип ВВСТ, в состав которого входит эталон (СИ)',
               'Примечание (номер извещения о непригодности к применению (свидетельства об аттестации (о поверке))']
+    
+    # Настройка заголовков таблицы
     for i, header in enumerate(headers):
         cell = header_cells[i]
         cell.text = header
@@ -374,24 +408,37 @@ def download_organization_list(request, org_id):
         for paragraph in cell.paragraphs:
             for run in paragraph.runs:
                 run.font.name = 'Times New Roman'
-                run.font.size = Pt(8)
+                run.font.size = Pt(7)  # Уменьшили с 8 до 7
                 run.bold = True
                 run.italic = True
-        # Выравнивание: 'Наименование' (i==1) — влево и по центру, остальные — по центру
-        if i == 1:
-            paragraph = cell.paragraphs[0]
+            # Все заголовки по центру
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            # В Word нет одновременного left+center, но можно сделать left, а текст вручную центрировать
-        else:
-            for paragraph in cell.paragraphs:
-                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Группируем записи по типам измерений
     measurement_groups = {}
     for record in records:
         if record.measurement_type.name not in measurement_groups:
             measurement_groups[record.measurement_type.name] = []
         measurement_groups[record.measurement_type.name].append(record)
+    
     row_num = 1
-    for measurement_type, records in measurement_groups.items():
+    
+    # Сортируем типы измерений согласно заданному порядку
+    sorted_measurement_types = []
+    for measurement_type in measurement_order:
+        if measurement_type in measurement_groups:
+            sorted_measurement_types.append(measurement_type)
+    
+    # Добавляем остальные типы измерений, которых нет в списке
+    for measurement_type in measurement_groups.keys():
+        if measurement_type not in sorted_measurement_types:
+            sorted_measurement_types.append(measurement_type)
+    
+    # Заполняем таблицу в правильном порядке
+    for measurement_type in sorted_measurement_types:
+        records_list = measurement_groups[measurement_type]
+        
+        # Добавляем заголовок группы
         row_cells = table.add_row().cells
         row_cells[0].text = f'Средства {measurement_type}'
         row_cells[0].merge(row_cells[8])
@@ -399,11 +446,13 @@ def download_organization_list(request, org_id):
         for paragraph in cell.paragraphs:
             for run in paragraph.runs:
                 run.font.name = 'Times New Roman'
-                run.font.size = Pt(8)
+                run.font.size = Pt(7)  # Уменьшили с 8 до 7
                 run.bold = True
                 run.italic = True
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        for record in records:
+        
+        # Добавляем записи для этого типа измерения
+        for record in records_list:
             row_cells = table.add_row().cells
             row_cells[0].text = str(row_num)
             row_cells[1].text = record.name
@@ -414,32 +463,35 @@ def download_organization_list(request, org_id):
             row_cells[6].text = f'С {timezone.now().strftime("%d.%m.%Y")} по {(timezone.now() + timezone.timedelta(days=365)).strftime("%d.%m.%Y")}'
             row_cells[7].text = record.tech_name
             row_cells[8].text = record.notes or ''
+            
+            # Настройка стиля для всех ячеек
             for i, cell in enumerate(row_cells):
                 for paragraph in cell.paragraphs:
                     for run in paragraph.runs:
                         run.font.name = 'Times New Roman'
-                        run.font.size = Pt(8)
+                        run.font.size = Pt(7)  # Уменьшили с 8 до 7
                         run.italic = True
-                    # Столбец 'Наименование' (i==1): влево и по центру, остальные — по центру
-                    if i == 1:
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                    else:
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # Все ячейки по центру
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
             row_num += 1
 
-    all_records = organization.equipment_records.all().select_related('measurement_type', 'user')
     # Подсчет количества приборов
+    all_records = organization.equipment_records.all().select_related('measurement_type', 'user')
     total_devices = sum(r.quantity for r in all_records)
     rejected_devices = sum(r.quantity for r in all_records if str(r.status).strip().lower() in ['брак', 'негоден', 'не годен', 'забраковано'])
+    
+    # Добавляем итоговую информацию
     summary_paragraph = doc.add_paragraph()
     summary_text = f"Всего приборов - {total_devices}, из них забраковано - {rejected_devices}"
     run = summary_paragraph.add_run(summary_text)
     run.font.name = 'Times New Roman'
-    run.font.size = Pt(8)
+    run.font.size = Pt(7)  # Уменьшили с 8 до 7
     run.italic = True
+    summary_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    response['Content-Disposition'] = f'attachment; filename=final_report_{organization.name}.docx'
+    response['Content-Disposition'] = f'attachment; filename=perechen_{organization.name}.docx'
     doc.save(response)
     return response
 
@@ -593,10 +645,11 @@ def admin_stats_view(request):
             'senior': trip.senior,
             'organizations': [],
         }
-        for org in trip.organizations.filter(is_closed=False):
+        for org in trip.organizations.all():
             org_info = {
                 'id': org.id,
                 'name': org.name,
+                'is_closed': org.is_closed,
                 'workers': defaultdict(lambda: defaultdict(int)),
                 'records': [],
                 'tech_staff': tech_staff_by_org.get(org.id),
