@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-zttw!*+gi4%5c5(sxl#6-8crxs_1mggbnzr-!k+a3_gf)-og2g
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['metrotrip.ru']
+ALLOWED_HOSTS = ['metrotrip.ru', '0.0.0.0', '5.35.92.247', 'localhost', '127.0.0.1']
 
 
 # Application definition

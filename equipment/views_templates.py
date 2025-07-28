@@ -59,8 +59,8 @@ def equipment_record_create_view(request):
     if request.method == 'POST':
         try:
             # Check if this is a duplicate submission
-            if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
-                return json_response(False, 'Invalid request type')
+            # if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+            #     return json_response(False, 'Invalid request type')
             
             # Get organization
             organization_id = request.POST.get('organization')
