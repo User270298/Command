@@ -40,12 +40,58 @@ def trip_detail_view(request, trip_id):
     """
     Отображает детальную информацию о командировке
     """
+    from django.shortcuts import redirect
+    from django.contrib import messages
+    from django.contrib.auth import get_user_model
+    
     trip = get_object_or_404(BusinessTrip, id=trip_id, members=request.user)
+    
+    # Обработка добавления работника в командировку
+    if request.method == 'POST' and 'add_worker' in request.POST:
+        # Проверяем, что пользователь является старшим командировки
+        if request.user != trip.senior:
+            messages.error(request, 'Только старший командировки может добавлять участников')
+            return redirect('trip_detail', trip_id=trip.id)
+        
+        # Проверяем, что командировка не завершена
+        if trip.end_date:
+            messages.error(request, 'Нельзя добавлять участников в завершенную командировку')
+            return redirect('trip_detail', trip_id=trip.id)
+        
+        user_id = request.POST.get('user_id')
+        if user_id:
+            try:
+                user = get_user_model().objects.get(id=user_id)
+                
+                # Проверяем, что пользователь не в активной командировке
+                if BusinessTrip.objects.filter(
+                    Q(senior=user) | Q(members=user),
+                    end_date__isnull=True
+                ).exclude(id=trip.id).exists():
+                    messages.error(request, f'Пользователь {user.get_full_name() or user.username} уже участвует в другой активной командировке')
+                elif user in trip.members.all():
+                    messages.warning(request, f'Пользователь {user.get_full_name() or user.username} уже участвует в этой командировке')
+                elif trip.members.count() >= 4:
+                    messages.error(request, 'Достигнут лимит участников в командировке (максимум 4 человека)')
+                else:
+                    trip.members.add(user)
+                    messages.success(request, f'Пользователь {user.get_full_name() or user.username} успешно добавлен в командировку')
+                    
+            except get_user_model().DoesNotExist:
+                messages.error(request, 'Пользователь не найден')
+        
+        return redirect('trip_detail', trip_id=trip.id)
+    
     # Получаем все организации командировки (включая закрытые)
     organizations = trip.organizations.all().order_by('-created_date')
+    
+    # Получаем доступных пользователей для добавления в командировку
+    available_users = BusinessTrip.get_available_users()
+    
     return render(request, 'trips/trip_detail.html', {
         'trip': trip,
-        'organizations': organizations
+        'organizations': organizations,
+        'available_users': available_users
     })
 
 @login_required
@@ -636,13 +682,17 @@ def admin_stats_view(request):
 
     all_stats_week_totals = {user: sum(mtypes.values()) for user, mtypes in all_stats_week.items()}
 
-    # Структура для подробного отчета по каждой командировке
+    # Структура для подробного отчета по каждой командировки
     trip_stats = []
     for trip in trips:
         trip_info = {
+            'trip': trip,  # Полный объект командировки
+            'id': trip.id,
             'name': trip.name,
             'city': trip.city,
             'senior': trip.senior,
+            'end_date': trip.end_date,
+            'members': trip.members.all(),
             'organizations': [],
         }
         for org in trip.organizations.all():

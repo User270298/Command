@@ -140,8 +140,8 @@ def dashboard_view(request):
         now = timezone.now()
         week_start = get_current_week_start(now)
         week_end = week_start + timedelta(days=7)
-        all_orgs = active_trip.organizations.filter(is_closed=False)
-        organizations = list(all_orgs)  # Показываем все незакрытые
+        all_orgs = active_trip.organizations.all()
+        organizations = list(all_orgs)  # Показываем все организации (включая закрытые)
         if user == getattr(active_trip, 'senior', None):
             tech_staff_records = TechnicalStaffRecord.objects.filter(organization__in=organizations, created_at__gte=week_start, created_at__lt=week_end)
             tech_staff_by_org = {rec.organization_id: rec for rec in tech_staff_records}

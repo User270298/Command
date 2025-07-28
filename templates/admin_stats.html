@@ -5,6 +5,16 @@
 {% block content %}
 <div class="container mt-4">
 
+    <!-- Сообщения -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
     <h2 class="mt-5">Статистика по командировкам</h2>
     <div class="accordion" id="tripsAccordion">
         {% for trip in trip_stats %}
@@ -12,12 +22,18 @@
             <h2 class="accordion-header" id="heading{{ forloop.counter }}">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false" aria-controls="collapse{{ forloop.counter }}">
                     {{ trip.name }} ({{ trip.city }}) — Старший: {{ trip.senior.get_full_name|default:trip.senior.username }}
+                    
                 </button>
             </h2>
             <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#tripsAccordion">
                 <div class="accordion-body">
                     {% for org in trip.organizations %}
-                        <h5 class="mt-3">Организация: {{ org.name }}</h5>
+                        <h5 class="mt-3">
+                            Организация: {{ org.name }}
+                            {% if org.is_closed %}
+                                <span class="badge bg-secondary ms-2">Закрыто</span>
+                            {% endif %}
+                        </h5>
                         <!-- Краткая текстовая статистика за неделю -->
                         <div class="mb-2">
                             <strong>За неделю (с {{ week_start|date:'d.m.Y H:i' }} по {{ week_end|date:'d.m.Y H:i' }}):</strong><br>
@@ -91,7 +107,5 @@
         </div>
         {% endfor %}
     </div>
-
-    
 </div>
 {% endblock %} 

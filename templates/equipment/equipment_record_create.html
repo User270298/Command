@@ -40,12 +40,21 @@
                     <div id="equipment-fields">
                         <fieldset class="mb-4 p-3 border rounded" id="equipment-1">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">Прибор</h5>
+                                <h5 class="mb-0">Прибор 1</h5>
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-equipment" data-field="1" style="display: none;">
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
                             </div>
                             <input type="hidden" name="equipment-fields" value="1">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="measurement_type_1" class="form-label">Тип измерения</label>
+                                    <label for="measurement_type_1" class="form-label">
+                                        Тип измерения
+                                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="Внимательно выберите тип измерения, в зависимости от того что вы выберите данные подадутся"></i>
+                                    </label>
                                     <select class="form-select" id="measurement_type_1" name="measurement_type_1" required>
                                         <option value="" selected>Выберите тип измерения</option>
                                         {% for type in measurement_types %}
@@ -55,17 +64,35 @@
                                 </div>
                                 <!-- Наименование -->
                                 <div class="col-md-6 mb-3">
-                                    <label for="name_1" class="form-label">Наименование</label>
+                                    <label for="name_1" class="form-label">
+                                        Наименование
+                                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="Заполняйте с большой буквы, внимательно проверьте название"></i>
+                                    </label>
                                     <input type="text" class="form-control" id="name_1" name="name_1" autocomplete="off">
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="device_type_1" class="form-label">Тип прибора</label>
+                                    <label for="device_type_1" class="form-label">
+                                        Тип прибора
+                                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="Внимательно проверьте тип прибора"></i>
+                                    </label>
                                     <input type="text" class="form-control" id="device_type_1" name="device_type_1" autocomplete="off">
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="serial_number_1" class="form-label">Номер прибора</label>
+                                    <label for="serial_number_1" class="form-label">
+                                        Номер прибора
+                                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="Номер пишется когда прибор один, если у вас однотипные приборы в одном подразделении то вы можете через + добавлять их номера, они добавятся как отдельные номерные приборы"></i>
+                                    </label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="serial_number_1" name="serial_number_1">
                                         <button type="button" class="btn btn-outline-secondary" id="add-serial-1">+</button>
@@ -75,12 +102,24 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="quantity_1" class="form-label">Количество</label>
+                                    <label for="quantity_1" class="form-label">
+                                        Количество
+                                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="По умолчанию 1, если несколько приборов, то номер не ставится"></i>
+                                    </label>
                                     <input type="number" class="form-control" id="quantity_1" name="quantity_1" value="1" min="1" required>
                                 </div>
                                 <!-- Наименование техники -->
                                 <div class="col-md-6 mb-3">
-                                    <label for="tech_name_1" class="form-label">Наименование техники</label>
+                                    <label for="tech_name_1" class="form-label">
+                                        Наименование техники (Подразделения)
+                                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="Укажите краткую аббревиатуру подразделения или техники"></i>
+                                    </label>
                                     <input type="text" class="form-control" id="tech_name_1" name="tech_name_1" autocomplete="off">
                                 </div>
                             </div>
@@ -129,6 +168,10 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 <script>
 $(function() {
+    // Инициализация tooltips для первого поля
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    
     $("#name_1").autocomplete({ source: "/equipment/autocomplete-name/" });
     $("#device_type_1").autocomplete({ source: "/equipment/autocomplete-device-type/" });
     $("#tech_name_1").autocomplete({ source: "/equipment/autocomplete-tech-name/" });
@@ -170,15 +213,190 @@ $(function() {
         }
     }
     setupSerialAdder(1);
-    // Для динамически добавляемых fieldset
-    const origAddField = document.getElementById('add-equipment-field').onclick;
-    document.getElementById('add-equipment-field').onclick = function() {
-        if (origAddField) origAddField.apply(this, arguments);
-        setTimeout(function() {
-            const count = document.querySelectorAll('#equipment-fields fieldset').length;
-            setupSerialAdder(count);
-        }, 350);
-    };
+    
+    // Обработчик удаления для первого поля (скрыт, пока нет других полей)
+    document.querySelector('.remove-equipment').addEventListener('click', function() {
+        const fieldset = this.closest('fieldset');
+        if (document.querySelectorAll('#equipment-fields fieldset').length > 1) {
+            fieldset.remove();
+            updateFieldNumbers();
+        }
+    });
+    
+    // Функциональность добавления новых полей оборудования
+    document.getElementById('add-equipment-field').addEventListener('click', function() {
+        const container = document.getElementById('equipment-fields');
+        const fieldCount = container.querySelectorAll('fieldset').length + 1;
+        
+        const newFieldset = document.createElement('fieldset');
+        newFieldset.className = 'mb-4 p-3 border rounded';
+        newFieldset.id = 'equipment-' + fieldCount;
+        
+        newFieldset.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Прибор ${fieldCount}</h5>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-equipment" data-field="${fieldCount}">
+                    <i class="fas fa-trash"></i> Удалить
+                </button>
+            </div>
+            <input type="hidden" name="equipment-fields" value="${fieldCount}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="measurement_type_${fieldCount}" class="form-label">
+                        Тип измерения
+                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Внимательно выберите тип измерения, в зависимости от того что вы выберите данные подадутся"></i>
+                    </label>
+                    <select class="form-select" id="measurement_type_${fieldCount}" name="measurement_type_${fieldCount}" required>
+                        <option value="" selected>Выберите тип измерения</option>
+                        {% for type in measurement_types %}
+                            <option value="{{ type.id }}">{{ type.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="name_${fieldCount}" class="form-label">
+                        Наименование
+                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Заполняйте с большой буквы, внимательно проверьте название"></i>
+                    </label>
+                    <input type="text" class="form-control" id="name_${fieldCount}" name="name_${fieldCount}" autocomplete="off">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="device_type_${fieldCount}" class="form-label">
+                        Тип прибора
+                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Внимательно проверьте тип прибора"></i>
+                    </label>
+                    <input type="text" class="form-control" id="device_type_${fieldCount}" name="device_type_${fieldCount}" autocomplete="off">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="serial_number_${fieldCount}" class="form-label">
+                        Номер прибора
+                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Номер пишется когда прибор один, если у вас однотипные приборы в одном подразделении то вы можете через + добавлять их номера, они добавятся как отдельные номерные приборы"></i>
+                    </label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="serial_number_${fieldCount}" name="serial_number_${fieldCount}">
+                        <button type="button" class="btn btn-outline-secondary" id="add-serial-${fieldCount}">+</button>
+                    </div>
+                    <div id="serial-list-${fieldCount}" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="quantity_${fieldCount}" class="form-label">
+                        Количество
+                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="По умолчанию 1, если несколько приборов, то номер не ставится"></i>
+                    </label>
+                    <input type="number" class="form-control" id="quantity_${fieldCount}" name="quantity_${fieldCount}" value="1" min="1" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="tech_name_${fieldCount}" class="form-label">
+                        Наименование техники (Подразделения)
+                        <i class="fas fa-exclamation-circle text-primary ms-1" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Укажите краткую аббревиатуру подразделения или техники"></i>
+                    </label>
+                    <input type="text" class="form-control" id="tech_name_${fieldCount}" name="tech_name_${fieldCount}" autocomplete="off">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="status_${fieldCount}" class="form-label">Статус</label>
+                    <select class="form-select" id="status_${fieldCount}" name="status_${fieldCount}" required>
+                        <option value="годен" selected>Годен</option>
+                        <option value="брак">Брак</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="notes_${fieldCount}" class="form-label">Примечание <small class="text-muted">(необязательно)</small></label>
+                    <input type="text" class="form-control" id="notes_${fieldCount}" name="notes_${fieldCount}" autocomplete="off">
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(newFieldset);
+        
+        // Показываем кнопки удаления для всех полей, так как теперь их больше одного
+        document.querySelectorAll('.remove-equipment').forEach(btn => {
+            btn.style.display = 'block';
+        });
+        
+        // Настройка автодополнения для новых полей
+        $(`#name_${fieldCount}`).autocomplete({ source: "/equipment/autocomplete-name/" });
+        $(`#device_type_${fieldCount}`).autocomplete({ source: "/equipment/autocomplete-device-type/" });
+        $(`#tech_name_${fieldCount}`).autocomplete({ source: "/equipment/autocomplete-tech-name/" });
+        $(`#notes_${fieldCount}`).autocomplete({ source: "/equipment/autocomplete-notes/" });
+        
+        // Инициализация tooltips для новых полей
+        const tooltipTriggerList = newFieldset.querySelectorAll('[data-bs-toggle="tooltip"]');
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        
+        // Настройка серийных номеров для нового поля
+        setupSerialAdder(fieldCount);
+        
+        // Обработчик удаления поля
+        newFieldset.querySelector('.remove-equipment').addEventListener('click', function() {
+            newFieldset.remove();
+            updateFieldNumbers();
+        });
+    });
+    
+    // Функция обновления номеров полей после удаления
+    function updateFieldNumbers() {
+        const fieldsets = document.querySelectorAll('#equipment-fields fieldset');
+        fieldsets.forEach((fieldset, index) => {
+            const fieldNum = index + 1;
+            fieldset.id = 'equipment-' + fieldNum;
+            fieldset.querySelector('h5').textContent = 'Прибор ' + fieldNum;
+            fieldset.querySelector('input[name="equipment-fields"]').value = fieldNum;
+            fieldset.querySelector('.remove-equipment').dataset.field = fieldNum;
+            
+            // Показываем/скрываем кнопки удаления
+            const removeBtn = fieldset.querySelector('.remove-equipment');
+            if (fieldsets.length === 1) {
+                removeBtn.style.display = 'none'; // Скрываем, если только одно поле
+            } else {
+                removeBtn.style.display = 'block'; // Показываем, если больше одного поля
+            }
+            
+            // Обновляем ID и name всех полей
+            const inputs = fieldset.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                const oldName = input.name;
+                if (oldName && oldName.includes('_')) {
+                    const parts = oldName.split('_');
+                    const newName = parts[0] + '_' + fieldNum;
+                    input.name = newName;
+                    input.id = newName;
+                }
+            });
+            
+            // Обновляем ID для серийных номеров
+            const serialInput = fieldset.querySelector(`input[name="serial_number_${fieldNum}"]`);
+            const serialBtn = fieldset.querySelector(`#add-serial-${fieldNum}`);
+            const serialList = fieldset.querySelector(`#serial-list-${fieldNum}`);
+            
+            if (serialInput) serialInput.id = `serial_number_${fieldNum}`;
+            if (serialBtn) serialBtn.id = `add-serial-${fieldNum}`;
+            if (serialList) serialList.id = `serial-list-${fieldNum}`;
+        });
+    }
 });
 </script>
 {% endblock %} 
