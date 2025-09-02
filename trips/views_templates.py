@@ -30,9 +30,11 @@ User = get_user_model()
 @login_required
 def trip_list_view(request):
     """
-    Отображает список командировок пользователя
+    Отображает список командировок пользователя (как участник или старший)
     """
-    trips = BusinessTrip.objects.filter(members=request.user).order_by('-start_date')
+    trips = BusinessTrip.objects.filter(
+        Q(members=request.user) | Q(senior=request.user)
+    ).order_by('-start_date')
     return render(request, 'trips/trip_list.html', {'trips': trips})
 
 @login_required

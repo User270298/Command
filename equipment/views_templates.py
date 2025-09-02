@@ -14,12 +14,24 @@ from .forms import EquipmentRecordForm
 
 @login_required
 def measurement_type_list_view(request):
+    user = request.user
+    
+    # Get all measurement types with total records count
     measurement_types = MeasurementType.objects.all().annotate(
         records_count=Count('equipment_records')
     )
     
+    # Get user-specific statistics for each measurement type
+    for measurement_type in measurement_types:
+        user_records_count = EquipmentRecord.objects.filter(
+            measurement_type=measurement_type,
+            user=user
+        ).count()
+        measurement_type.user_records_count = user_records_count
+    
     context = {
-        'measurement_types': measurement_types
+        'measurement_types': measurement_types,
+        'user': user
     }
     
     return render(request, 'equipment/measurement_type_list.html', context)
