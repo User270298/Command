@@ -48,7 +48,7 @@ def logout_view(request):
     return redirect('login')
 
 def register_view(request):
-    VALID_CODES = ["knNiQwceyNDXGtY-M50bO"]  # Можно вынести в настройки или БД
+    VALID_CODES = ["knNiQwceyNDXGtY-M50b"]  # Можно вынести в настройки или БД
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():

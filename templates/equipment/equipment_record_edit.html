@@ -43,7 +43,7 @@
                                 <i class="fas fa-exclamation-circle text-primary ms-1" 
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
-                                   title="Внимательно выберите тип измерения, в зависимости от того что вы выберите данные подадутся"></i>
+                                   title="Выберите категорию измерений. От этого зависит, в каком разделе будут отображаться ваши данные в отчетах"></i>
                             </label>
                             {{ form.measurement_type }}
                             {% if form.measurement_type.errors %}
@@ -56,7 +56,7 @@
                                 <i class="fas fa-exclamation-circle text-primary ms-1" 
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
-                                   title="Заполняйте с большой буквы, внимательно проверьте название"></i>
+                                   title="Введите полное название прибора. Начинайте с заглавной буквы и внимательно проверьте правильность написания"></i>
                             </label>
                             {{ form.name }}
                             {% if form.name.errors %}
@@ -72,7 +72,7 @@
                                 <i class="fas fa-exclamation-circle text-primary ms-1" 
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
-                                   title="Внимательно проверьте тип прибора"></i>
+                                   title="Укажите модель или тип прибора. Проверьте точность указанной информации"></i>
                             </label>
                             {{ form.device_type }}
                             {% if form.device_type.errors %}
@@ -85,7 +85,7 @@
                                 <i class="fas fa-exclamation-circle text-primary ms-1" 
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
-                                   title="Номер пишется когда прибор один, если у вас однотипные приборы в одном подразделении то вы можете через + добавлять их номера, они добавятся как отдельные номерные приборы"></i>
+                                   title="Введите серийный номер прибора. Если у вас несколько одинаковых приборов, используйте кнопку + для добавления дополнительных номеров"></i>
                             </label>
                             {{ form.serial_number }}
                             {% if form.serial_number.errors %}
@@ -101,7 +101,7 @@
                                 <i class="fas fa-exclamation-circle text-primary ms-1" 
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
-                                   title="По умолчанию 1, если несколько приборов, то номер не ставится"></i>
+                                   title="Укажите количество приборов. По умолчанию 1. При указании нескольких приборов серийные номера не требуются"></i>
                             </label>
                             {{ form.quantity }}
                             {% if form.quantity.errors %}
@@ -114,7 +114,7 @@
                                 <i class="fas fa-exclamation-circle text-primary ms-1" 
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
-                                   title="Укажите краткую аббревиатуру подразделения или техники"></i>
+                                   title="Введите краткое обозначение подразделения или типа техники (например: ЦТС, КИП, ЭС)"></i>
                             </label>
                             {{ form.tech_name }}
                             {% if form.tech_name.errors %}

@@ -53,7 +53,7 @@
                                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                                            data-bs-toggle="tooltip" 
                                            data-bs-placement="top" 
-                                           title="Внимательно выберите тип измерения, в зависимости от того что вы выберите данные подадутся"></i>
+                                           title="Выберите категорию измерений. От этого зависит, в каком разделе будут отображаться ваши данные в отчетах"></i>
                                     </label>
                                     <select class="form-select" id="measurement_type_1" name="measurement_type_1" required>
                                         <option value="" selected>Выберите тип измерения</option>
@@ -69,7 +69,7 @@
                                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                                            data-bs-toggle="tooltip" 
                                            data-bs-placement="top" 
-                                           title="Заполняйте с большой буквы, внимательно проверьте название"></i>
+                                           title="Введите полное название прибора. Начинайте с заглавной буквы и внимательно проверьте правильность написания"></i>
                                     </label>
                                     <input type="text" class="form-control" id="name_1" name="name_1" autocomplete="off">
                                 </div>
@@ -81,7 +81,7 @@
                                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                                            data-bs-toggle="tooltip" 
                                            data-bs-placement="top" 
-                                           title="Внимательно проверьте тип прибора"></i>
+                                           title="Укажите модель или тип прибора. Проверьте точность указанной информации"></i>
                                     </label>
                                     <input type="text" class="form-control" id="device_type_1" name="device_type_1" autocomplete="off">
                                 </div>
@@ -91,7 +91,7 @@
                                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                                            data-bs-toggle="tooltip" 
                                            data-bs-placement="top" 
-                                           title="Номер пишется когда прибор один, если у вас однотипные приборы в одном подразделении то вы можете через + добавлять их номера, они добавятся как отдельные номерные приборы"></i>
+                                           title="Введите серийный номер прибора. Если у вас несколько одинаковых приборов, используйте кнопку + для добавления дополнительных номеров"></i>
                                     </label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="serial_number_1" name="serial_number_1">
@@ -107,7 +107,7 @@
                                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                                            data-bs-toggle="tooltip" 
                                            data-bs-placement="top" 
-                                           title="По умолчанию 1, если несколько приборов, то номер не ставится"></i>
+                                           title="Укажите количество приборов. По умолчанию 1. При указании нескольких приборов серийные номера не требуются"></i>
                                     </label>
                                     <input type="number" class="form-control" id="quantity_1" name="quantity_1" value="1" min="1" required>
                                 </div>
@@ -118,7 +118,7 @@
                                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                                            data-bs-toggle="tooltip" 
                                            data-bs-placement="top" 
-                                           title="Укажите краткую аббревиатуру подразделения или техники"></i>
+                                           title="Введите краткое обозначение подразделения или типа техники (например: ЦТС, КИП, ЭС)"></i>
                                     </label>
                                     <input type="text" class="form-control" id="tech_name_1" name="tech_name_1" autocomplete="off">
                                 </div>
@@ -247,7 +247,7 @@ $(function() {
                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="top" 
-                           title="Внимательно выберите тип измерения, в зависимости от того что вы выберите данные подадутся"></i>
+                           title="Выберите категорию измерений. От этого зависит, в каком разделе будут отображаться ваши данные в отчетах"></i>
                     </label>
                     <select class="form-select" id="measurement_type_${fieldCount}" name="measurement_type_${fieldCount}" required>
                         <option value="" selected>Выберите тип измерения</option>
@@ -262,7 +262,7 @@ $(function() {
                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="top" 
-                           title="Заполняйте с большой буквы, внимательно проверьте название"></i>
+                           title="Введите полное название прибора. Начинайте с заглавной буквы и внимательно проверьте правильность написания"></i>
                     </label>
                     <input type="text" class="form-control" id="name_${fieldCount}" name="name_${fieldCount}" autocomplete="off">
                 </div>
@@ -274,7 +274,7 @@ $(function() {
                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="top" 
-                           title="Внимательно проверьте тип прибора"></i>
+                           title="Укажите модель или тип прибора. Проверьте точность указанной информации"></i>
                     </label>
                     <input type="text" class="form-control" id="device_type_${fieldCount}" name="device_type_${fieldCount}" autocomplete="off">
                 </div>
@@ -284,7 +284,7 @@ $(function() {
                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="top" 
-                           title="Номер пишется когда прибор один, если у вас однотипные приборы в одном подразделении то вы можете через + добавлять их номера, они добавятся как отдельные номерные приборы"></i>
+                           title="Введите серийный номер прибора. Если у вас несколько одинаковых приборов, используйте кнопку + для добавления дополнительных номеров"></i>
                     </label>
                     <div class="input-group">
                         <input type="text" class="form-control" id="serial_number_${fieldCount}" name="serial_number_${fieldCount}">
@@ -300,7 +300,7 @@ $(function() {
                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="top" 
-                           title="По умолчанию 1, если несколько приборов, то номер не ставится"></i>
+                           title="Укажите количество приборов. По умолчанию 1. При указании нескольких приборов серийные номера не требуются"></i>
                     </label>
                     <input type="number" class="form-control" id="quantity_${fieldCount}" name="quantity_${fieldCount}" value="1" min="1" required>
                 </div>
@@ -310,7 +310,7 @@ $(function() {
                         <i class="fas fa-exclamation-circle text-primary ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="top" 
-                           title="Укажите краткую аббревиатуру подразделения или техники"></i>
+                           title="Введите краткое обозначение подразделения или типа техники (например: ЦТС, КИП, ЭС)"></i>
                     </label>
                     <input type="text" class="form-control" id="tech_name_${fieldCount}" name="tech_name_${fieldCount}" autocomplete="off">
                 </div>
