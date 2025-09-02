@@ -51,6 +51,10 @@ class Organization(models.Model):
     trip = models.ForeignKey(BusinessTrip, on_delete=models.CASCADE, related_name='organizations', verbose_name="Командировка")
     created_date = models.DateField(auto_now_add=True, verbose_name="Дата создания")
     is_closed = models.BooleanField(default=False, verbose_name="Закрыта")
+    last_fixed_at = models.DateTimeField(null=True, blank=True, verbose_name="Время последней фиксации")
+    fixed_until = models.DateTimeField(null=True, blank=True, verbose_name="Фиксация действует до")
+    tech_staff_count = models.IntegerField(default=0, verbose_name="Число тех. состава")
+    tech_staff_fixed = models.IntegerField(null=True, blank=True, verbose_name="Зафиксированное число тех. состава")
     
     def __str__(self):
         return f"{self.name} - {self.trip.name}"
