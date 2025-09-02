@@ -662,8 +662,10 @@ def admin_stats_view(request):
     from django.contrib.auth import get_user_model
     from .models import TechnicalStaffRecord
 
-    # Получаем все командировки
-    trips = BusinessTrip.objects.prefetch_related('organizations', 'organizations__equipment_records', 'members', 'senior')
+    # Получаем только активные командировки (без даты окончания)
+    trips = BusinessTrip.objects.filter(end_date__isnull=True).prefetch_related(
+        'organizations', 'organizations__equipment_records', 'members', 'senior'
+    )
 
     # Общий сводный отчет по всем командировкам
     all_stats = defaultdict(lambda: defaultdict(int))  # {user: {measurement_type: count}}
@@ -739,6 +741,105 @@ def admin_stats_view(request):
             org_info['short_stats'] = {k: {mt: dict(vv) for mt, vv in v.items()} for k, v in short_stats.items() if isinstance(v, dict)}
             trip_info['organizations'].append(org_info)
         trip_stats.append(trip_info)
+    
+    # ---------------- Архив завершенных командировок ----------------
+    # Группировка по годам и месяцам по ДАТЕ НАЧАЛА
+    completed_trips = BusinessTrip.objects.filter(end_date__isnull=False)
+    years = sorted({t.start_date.year for t in completed_trips}, reverse=True)
+    selected_year = request.GET.get('year')
+    selected_year = int(selected_year) if selected_year else (years[0] if years else timezone.now().year)
+    months_in_year = sorted({t.start_date.month for t in completed_trips.filter(start_date__year=selected_year)}, reverse=True)
+    selected_month = request.GET.get('month')
+    selected_month = int(selected_month) if selected_month else (months_in_year[0] if months_in_year else timezone.now().month)
+    month_names_ru = [None, 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+    months_named = [{'num': m, 'name': month_names_ru[m]} for m in months_in_year]
+    trips_in_month = completed_trips.filter(start_date__year=selected_year, start_date__month=selected_month).order_by('-start_date')
+    selected_trip_id = request.GET.get('trip_id')
+    selected_trip = None
+    archive_stats = None
+    archive_records = []
+    archive_members_stats = {}
+    archive_orgs = []
+    if selected_trip_id:
+        try:
+            selected_trip = trips_in_month.get(id=selected_trip_id)
+            # Полный диапазон выбранной командировки
+            tz = timezone.get_current_timezone()
+            trip_start_dt = timezone.make_aware(datetime.combine(selected_trip.start_date, datetime.min.time()), tz) if isinstance(selected_trip.start_date, datetime) is False else selected_trip.start_date
+            if selected_trip.end_date:
+                trip_end_next_day = selected_trip.end_date + timedelta(days=1)
+            else:
+                trip_end_next_day = timezone.now().date() + timedelta(days=1)
+            trip_end_dt = timezone.make_aware(datetime.combine(trip_end_next_day, datetime.min.time()), tz)
+            # Записи выбранной командировки за весь период командировки
+            archive_records = EquipmentRecord.objects.filter(
+                organization__trip=selected_trip,
+                date_created__gte=trip_start_dt,
+                date_created__lt=trip_end_dt,
+            ).select_related('measurement_type', 'user', 'organization')
+            total_verified = sum(r.quantity for r in archive_records)
+            total_records = archive_records.count()
+            # По членам ВМГ: сколько поверил по типам измерений
+            members_stats = {}
+            for rec in archive_records:
+                user_label = rec.user.get_full_name() or rec.user.username
+                mtype = rec.measurement_type.name if rec.measurement_type else 'Неизвестно'
+                if user_label not in members_stats:
+                    members_stats[user_label] = {}
+                if mtype not in members_stats[user_label]:
+                    members_stats[user_label][mtype] = { 'total': 0, 'rejected': 0 }
+                members_stats[user_label][mtype]['total'] += rec.quantity
+                if str(rec.status).strip().lower() in ['брак', 'негоден', 'не годен', 'забраковано']:
+                    members_stats[user_label][mtype]['rejected'] += rec.quantity
+            archive_members_stats = members_stats
+            # Группировка по организациям
+            org_id_to_info = {}
+            # Получить тех. состав по организациям за период командировки (по неделям или created_at)
+            tech_staff_qs = TechnicalStaffRecord.objects.filter(
+                organization__trip=selected_trip,
+                created_at__gte=trip_start_dt,
+                created_at__lt=trip_end_dt,
+            ).select_related('organization')
+            tech_staff_sum_by_org = {}
+            for ts in tech_staff_qs:
+                tech_staff_sum_by_org[ts.organization_id] = tech_staff_sum_by_org.get(ts.organization_id, 0) + ts.value
+
+            for rec in archive_records:
+                org = rec.organization
+                if org.id not in org_id_to_info:
+                    org_id_to_info[org.id] = {
+                        'id': org.id,
+                        'name': org.name,
+                        'total_devices': 0,
+                        'rejected_devices': 0,
+                        'tech_staff_total': tech_staff_sum_by_org.get(org.id, 0),
+                        'members_stats': {},  # per user -> per type
+                        'records': [],
+                    }
+                info = org_id_to_info[org.id]
+                info['total_devices'] += rec.quantity
+                if str(rec.status).strip().lower() in ['брак', 'негоден', 'не годен', 'забраковано']:
+                    info['rejected_devices'] += rec.quantity
+                user_label = rec.user.get_full_name() or rec.user.username
+                mtype = rec.measurement_type.name if rec.measurement_type else 'Неизвестно'
+                if user_label not in info['members_stats']:
+                    info['members_stats'][user_label] = {}
+                if mtype not in info['members_stats'][user_label]:
+                    info['members_stats'][user_label][mtype] = { 'total': 0, 'rejected': 0 }
+                info['members_stats'][user_label][mtype]['total'] += rec.quantity
+                if str(rec.status).strip().lower() in ['брак', 'негоден', 'не годен', 'забраковано']:
+                    info['members_stats'][user_label][mtype]['rejected'] += rec.quantity
+                info['records'].append(rec)
+            # Список организаций
+            archive_orgs = list(org_id_to_info.values())
+            archive_orgs.sort(key=lambda x: x['name'])
+            archive_stats = {
+                'total_verified': total_verified,
+                'total_records': total_records,
+            }
+        except BusinessTrip.DoesNotExist:
+            selected_trip = None
+
     return render(request, 'admin_stats.html', {
         'all_stats': all_stats,
         'all_stats_totals': all_stats_totals,
@@ -747,6 +848,17 @@ def admin_stats_view(request):
         'trip_stats': trip_stats,
         'week_start': week_start,
         'week_end': week_end,
+        # Архив
+        'archive_years': years,
+        'archive_selected_year': selected_year,
+        'archive_months': months_named,
+        'archive_selected_month': selected_month,
+        'archive_trips': trips_in_month,
+        'archive_selected_trip': selected_trip,
+        'archive_stats': archive_stats,
+        'archive_members_stats': archive_members_stats,
+        'archive_records': archive_records,
+        'archive_orgs': archive_orgs,
     }) 
 
 @login_required

@@ -214,6 +214,28 @@ main {
 }
 
 /* Print Styles */
+/* Responsive helpers */
+.badges-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.badge {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 576px) {
+    .badge {
+        font-size: 0.85rem;
+        line-height: 1.2;
+        padding: 0.35em 0.5em;
+    }
+}
+
+/* Print Styles */
 @media print {
     header, footer, .no-print {
         display: none !important;
